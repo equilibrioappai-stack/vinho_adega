@@ -115,10 +115,12 @@ export default function Catalog() {
       {/* Grid */}
       <div
         style={{
+          maxWidth: 1280,
+          margin: "0 auto",
           padding: "0.5rem 1.5rem 3rem",
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-          gap: 18,
+          gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))",
+          gap: 28,
         }}
       >
         {filtered.length === 0 && (
@@ -134,8 +136,8 @@ export default function Catalog() {
             <div
               key={w.id}
               style={{
-                background: "#231c12",
-                border: "0.5px solid #3a2e1e",
+                background: "#2a2118",
+                border: "0.5px solid #4a3a26",
                 borderRadius: 12,
                 padding: "1.1rem",
                 display: "flex",
@@ -143,7 +145,7 @@ export default function Catalog() {
                 boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
               }}
             >
-              <div style={{ width: 38, height: 38, borderRadius: 8, background: "#2e2418", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 8, background: "#352a1c", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
                 {TYPE_ICON[w.type] || "🍾"}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
