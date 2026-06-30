@@ -1,9 +1,16 @@
 import { useState } from "react";
 import { useWines } from "../components/WineContext";
+import { C, FONT } from "../theme";
 
 const ADMIN_PASSWORD = "adega2025";
 
 const EMPTY_FORM = { name: "", type: "Tinto", origin: "ARGENTINA", price: "", promo: "", tags: [] };
+
+const label = (text) => (
+  <span style={{ fontSize: 11, color: C.inkSoft, textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>
+    {text}
+  </span>
+);
 
 export default function Admin() {
   const { wines, addWine, updateWine, deleteWine } = useWines();
@@ -12,7 +19,7 @@ export default function Admin() {
   const [pwError, setPwError] = useState(false);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [modal, setModal] = useState(null); // null | { mode: "add"|"edit", wine }
+  const [modal, setModal] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
@@ -28,11 +35,7 @@ export default function Admin() {
     return matchS && matchT;
   });
 
-  const openAdd = () => {
-    setForm(EMPTY_FORM);
-    setModal({ mode: "add" });
-  };
-
+  const openAdd = () => { setForm(EMPTY_FORM); setModal({ mode: "add" }); };
   const openEdit = (w) => {
     setForm({ name: w.name, type: w.type, origin: w.origin, price: w.price, promo: w.promo || "", tags: w.tags || [] });
     setModal({ mode: "edit", id: w.id });
@@ -41,9 +44,7 @@ export default function Admin() {
   const save = () => {
     if (!form.name.trim() || !form.price) return;
     const wine = {
-      name: form.name.trim(),
-      type: form.type,
-      origin: form.origin,
+      name: form.name.trim(), type: form.type, origin: form.origin,
       price: parseFloat(form.price),
       promo: form.promo ? parseFloat(form.promo) : null,
       tags: form.tags,
@@ -63,32 +64,35 @@ export default function Admin() {
     novidades: wines.filter(w => w.tags?.includes("new")).length,
   };
 
-  const inputStyle = {
-    width: "100%", background: "#f8f6f2", border: "0.5px solid #d8d0c0",
-    borderRadius: 6, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", color: "#1a1208", outline: "none"
+  const fieldInput = {
+    width: "100%", background: C.bg, border: `1px solid ${C.line}`,
+    borderRadius: 7, padding: "9px 11px", fontSize: 13.5, fontFamily: "inherit",
+    color: C.ink, outline: "none", boxSizing: "border-box",
   };
-
-  const selectStyle = { ...inputStyle };
 
   if (!authed) {
     return (
-      <div style={{ minHeight: "100vh", background: "#0f0c08", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif" }}>
-        <div style={{ background: "#1a1510", border: "0.5px solid #3a2e1e", borderRadius: 12, padding: "2rem", width: "100%", maxWidth: 340 }}>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: "#f0e8d8", marginBottom: 6 }}>Área restrita</p>
-          <p style={{ fontSize: 12, color: "#7a6848", marginBottom: "1.5rem" }}>Acesso exclusivo para o fornecedor</p>
-          <label style={{ fontSize: 11, color: "#7a6848", display: "block", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>Senha</label>
+      <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT, padding: "1rem" }}>
+        <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 12, padding: "2rem 1.75rem", width: "100%", maxWidth: 360 }}>
+          <p style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: C.gold, marginBottom: 8, fontWeight: 700 }}>
+            Adega Selecionada
+          </p>
+          <p style={{ fontSize: 22, fontWeight: 700, color: C.ink, marginBottom: 4 }}>Área restrita</p>
+          <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: "1.75rem" }}>Acesso exclusivo para o fornecedor</p>
+
+          {label("Senha")}
           <input
             type="password"
             value={pw}
             onChange={e => setPw(e.target.value)}
             onKeyDown={e => e.key === "Enter" && login()}
             placeholder="••••••••"
-            style={{ width: "100%", background: "#1e1810", border: "0.5px solid " + (pwError ? "#c84040" : "#3a2e1e"), color: "#e8e0d0", borderRadius: 6, padding: "10px 12px", fontSize: 14, fontFamily: "inherit", outline: "none", marginBottom: 8 }}
+            style={{ ...fieldInput, border: `1px solid ${pwError ? C.danger : C.line}`, marginBottom: 6 }}
           />
-          {pwError && <p style={{ fontSize: 11, color: "#c87070", marginBottom: 8 }}>Senha incorreta.</p>}
+          {pwError && <p style={{ fontSize: 12, color: C.danger, marginBottom: 8 }}>Senha incorreta.</p>}
           <button
             onClick={login}
-            style={{ width: "100%", background: "#a06420", border: "none", color: "#fff", borderRadius: 6, padding: "10px", fontSize: 13, fontFamily: "inherit", fontWeight: 500, cursor: "pointer" }}
+            style={{ width: "100%", background: C.ink, border: "none", color: C.surface, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", fontWeight: 600, cursor: "pointer", marginTop: 6 }}
           >Entrar</button>
         </div>
       </div>
@@ -96,26 +100,28 @@ export default function Admin() {
   }
 
   return (
-    <div style={{ background: "#f4f1eb", minHeight: "100vh", fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ background: C.bg, minHeight: "100vh", fontFamily: FONT }}>
       {/* Header */}
-      <div style={{ background: "#1a1208", padding: "1rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ background: C.surface, borderBottom: `1px solid ${C.line}`, padding: "1rem 1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: "#f0e8d8", fontWeight: 400 }}>Painel do fornecedor</p>
-          <p style={{ fontSize: 11, color: "#7a6848" }}>Gerencie rótulos, preços e promoções</p>
+          <p style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: C.gold, fontWeight: 700, marginBottom: 3 }}>
+            Adega Selecionada
+          </p>
+          <p style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>Painel do fornecedor</p>
         </div>
         <button
           onClick={() => setAuthed(false)}
-          style={{ background: "none", border: "0.5px solid #3a2e1e", color: "#7a6848", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontFamily: "inherit", cursor: "pointer" }}
+          style={{ background: "none", border: `1px solid ${C.line}`, color: C.inkSoft, borderRadius: 7, padding: "6px 13px", fontSize: 12.5, fontFamily: "inherit", cursor: "pointer" }}
         >Sair</button>
       </div>
 
-      <div style={{ padding: "1.5rem" }}>
+      <div style={{ padding: "1.25rem", maxWidth: 900, margin: "0 auto" }}>
         {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: "1.25rem" }}>
-          {[["Total", stats.total], ["Promoções", stats.promos], ["Novidades", stats.novidades]].map(([label, val]) => (
-            <div key={label} style={{ background: "#fff", border: "0.5px solid #ddd5c0", borderRadius: 8, padding: "0.75rem 1rem" }}>
-              <p style={{ fontSize: 11, color: "#8a7a60", marginBottom: 4 }}>{label}</p>
-              <p style={{ fontSize: 24, fontWeight: 500, color: "#1a1208" }}>{val}</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: "1.25rem" }}>
+          {[["Rótulos", stats.total], ["Em promoção", stats.promos], ["Novidades", stats.novidades]].map(([lbl, val]) => (
+            <div key={lbl} style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 10, padding: "0.9rem 1rem" }}>
+              <p style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{lbl}</p>
+              <p style={{ fontSize: 26, fontWeight: 700, color: C.ink, lineHeight: 1 }}>{val}</p>
             </div>
           ))}
         </div>
@@ -126,134 +132,147 @@ export default function Admin() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar rótulo..."
-            style={{ flex: 1, minWidth: 140, background: "#fff", border: "0.5px solid #d8d0c0", borderRadius: 6, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", color: "#1a1208", outline: "none" }}
+            style={{ flex: 1, minWidth: 140, background: C.surface, border: `1px solid ${C.line}`, borderRadius: 8, padding: "9px 12px", fontSize: 13.5, fontFamily: "inherit", color: C.ink, outline: "none" }}
           />
           <select
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value)}
-            style={{ background: "#fff", border: "0.5px solid #d8d0c0", borderRadius: 6, padding: "8px 10px", fontSize: 12, fontFamily: "inherit", color: "#1a1208" }}
+            style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 8, padding: "9px 10px", fontSize: 13, fontFamily: "inherit", color: C.ink }}
           >
             <option value="all">Todos os tipos</option>
             {["Tinto","Branco","Rosé","Espumante","Azeite"].map(t => <option key={t} value={t}>{t}</option>)}
           </select>
           <button
             onClick={openAdd}
-            style={{ background: "#a06420", border: "none", color: "#fff", borderRadius: 6, padding: "8px 14px", fontSize: 13, fontFamily: "inherit", fontWeight: 500, cursor: "pointer" }}
+            style={{ background: C.ink, border: "none", color: C.surface, borderRadius: 8, padding: "9px 15px", fontSize: 13.5, fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}
           >+ Novo rótulo</button>
         </div>
 
-        {/* Table */}
-        <div style={{ background: "#fff", border: "0.5px solid #d8d0c0", borderRadius: 10, overflow: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: "#f8f4ec", borderBottom: "0.5px solid #d8d0c0" }}>
-                {["Rótulo","Tipo","Origem","Preço","Promoção",""].map(h => (
-                  <th key={h} style={{ textAlign: "left", padding: "10px 12px", fontSize: 11, fontWeight: 500, color: "#8a7a60", textTransform: "uppercase", letterSpacing: 0.5 }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 && (
-                <tr><td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "#8a7a60" }}>Nenhum rótulo encontrado.</td></tr>
-              )}
-              {filtered.map(w => (
-                <tr key={w.id} style={{ borderBottom: "0.5px solid #ece8e0" }}>
-                  <td style={{ padding: "9px 12px", color: "#1a1208", fontWeight: 400, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {w.name}
-                    {w.tags?.includes("new") && <span style={{ fontSize: 9, background: "#e8eef8", color: "#274d8a", padding: "1px 5px", borderRadius: 3, marginLeft: 5 }}>Nova</span>}
-                    {w.promo && <span style={{ fontSize: 9, background: "#fef4e0", color: "#8a5a10", padding: "1px 5px", borderRadius: 3, marginLeft: 5 }}>Promo</span>}
-                  </td>
-                  <td style={{ padding: "9px 12px", color: "#5a4e38", fontSize: 12 }}>{w.type}</td>
-                  <td style={{ padding: "9px 12px", color: "#8a7a60", fontSize: 11 }}>{w.origin}</td>
-                  <td style={{ padding: "9px 12px", fontWeight: 500, color: "#1a1208" }}>R$ {w.price}</td>
-                  <td style={{ padding: "9px 12px", color: w.promo ? "#b85a10" : "#c0b8a8", fontWeight: w.promo ? 500 : 400 }}>
-                    {w.promo ? `R$ ${w.promo}` : "—"}
-                  </td>
-                  <td style={{ padding: "9px 12px" }}>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button
-                        onClick={() => openEdit(w)}
-                        style={{ background: "none", border: "0.5px solid #d8d0c0", borderRadius: 5, width: 28, height: 28, cursor: "pointer", fontSize: 13, color: "#8a7a60" }}
-                        title="Editar"
-                      >✏️</button>
-                      <button
-                        onClick={() => setConfirmDelete(w)}
-                        style={{ background: "none", border: "0.5px solid #d8d0c0", borderRadius: 5, width: 28, height: 28, cursor: "pointer", fontSize: 13, color: "#8a7a60" }}
-                        title="Excluir"
-                      >🗑️</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Lista de rótulos (mobile-first: não usa table) */}
+        <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 10, overflow: "hidden" }}>
+          {/* Cabeçalho visível só em desktop */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 90px 80px 80px 64px", gap: 0, borderBottom: `1px solid ${C.line}`, padding: "9px 14px", background: C.bg }}>
+            {["Rótulo","Tipo","Origem","Preço","Promo",""].map(h => (
+              <span key={h} style={{ fontSize: 10.5, color: C.muted, textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600 }}>{h}</span>
+            ))}
+          </div>
+
+          {filtered.length === 0 && (
+            <p style={{ padding: "2rem", textAlign: "center", color: C.muted, fontSize: 13.5 }}>Nenhum rótulo encontrado.</p>
+          )}
+
+          {filtered.map((w, i) => (
+            <div
+              key={w.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 90px 90px 80px 80px 64px",
+                gap: 0,
+                padding: "10px 14px",
+                borderBottom: i < filtered.length - 1 ? `1px solid ${C.line}` : "none",
+                alignItems: "center",
+              }}
+            >
+              <div style={{ overflow: "hidden" }}>
+                <p style={{ fontSize: 13.5, fontWeight: 500, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {w.name}
+                </p>
+                <div style={{ display: "flex", gap: 5, marginTop: 3 }}>
+                  {w.tags?.includes("new") && (
+                    <span style={{ fontSize: 9.5, color: C.inkSoft, fontWeight: 700, textTransform: "uppercase" }}>Novidade</span>
+                  )}
+                  {w.promo && (
+                    <span style={{ fontSize: 9.5, color: C.gold, fontWeight: 700, textTransform: "uppercase" }}>Promoção</span>
+                  )}
+                </div>
+              </div>
+              <span style={{ fontSize: 12.5, color: C.inkSoft }}>{w.type}</span>
+              <span style={{ fontSize: 11.5, color: C.muted }}>{w.origin.charAt(0) + w.origin.slice(1).toLowerCase()}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>R$ {w.price}</span>
+              <span style={{ fontSize: 13, color: w.promo ? C.accent : C.muted }}>
+                {w.promo ? `R$ ${w.promo}` : "—"}
+              </span>
+              <div style={{ display: "flex", gap: 5 }}>
+                <button
+                  onClick={() => openEdit(w)}
+                  style={{ background: "none", border: `1px solid ${C.line}`, borderRadius: 6, width: 28, height: 28, cursor: "pointer", fontSize: 12, color: C.inkSoft }}
+                  title="Editar"
+                >✏️</button>
+                <button
+                  onClick={() => setConfirmDelete(w)}
+                  style={{ background: "none", border: `1px solid ${C.line}`, borderRadius: 6, width: 28, height: 28, cursor: "pointer", fontSize: 12, color: C.inkSoft }}
+                  title="Excluir"
+                >🗑️</button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Modal add/edit */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: "1.5rem", width: "100%", maxWidth: 460, maxHeight: "90vh", overflowY: "auto" }}>
-            <p style={{ fontSize: 16, fontWeight: 500, color: "#1a1208", marginBottom: "1rem" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(34,31,26,0.45)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0" }}>
+          <div style={{ background: C.surface, borderRadius: "14px 14px 0 0", padding: "1.5rem 1.25rem 2rem", width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto" }}>
+            <p style={{ fontSize: 17, fontWeight: 700, color: C.ink, marginBottom: "1.25rem" }}>
               {modal.mode === "add" ? "Novo rótulo" : "Editar rótulo"}
             </p>
 
-            <div style={{ marginBottom: 10 }}>
-              <label style={{ fontSize: 11, color: "#8a7a60", display: "block", marginBottom: 4, textTransform: "uppercase" }}>Nome</label>
-              <input style={inputStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: Alamos Malbec" />
+            <div style={{ marginBottom: 12 }}>
+              {label("Nome")}
+              <input style={fieldInput} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: Alamos Malbec" />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
               <div>
-                <label style={{ fontSize: 11, color: "#8a7a60", display: "block", marginBottom: 4, textTransform: "uppercase" }}>Tipo</label>
-                <select style={selectStyle} value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+                {label("Tipo")}
+                <select style={fieldInput} value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
                   {["Tinto","Branco","Rosé","Espumante","Azeite"].map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 11, color: "#8a7a60", display: "block", marginBottom: 4, textTransform: "uppercase" }}>Origem</label>
-                <select style={selectStyle} value={form.origin} onChange={e => setForm(f => ({ ...f, origin: e.target.value }))}>
+                {label("Origem")}
+                <select style={fieldInput} value={form.origin} onChange={e => setForm(f => ({ ...f, origin: e.target.value }))}>
                   <option value="ARGENTINA">Argentina</option>
                   <option value="CHILE">Chile</option>
                   <option value="PORTUGAL">Portugal</option>
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 11, color: "#8a7a60", display: "block", marginBottom: 4, textTransform: "uppercase" }}>Preço (R$)</label>
-                <input style={inputStyle} type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="0" min="0" />
+                {label("Preço (R$)")}
+                <input style={fieldInput} type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="0" min="0" />
               </div>
               <div>
-                <label style={{ fontSize: 11, color: "#8a7a60", display: "block", marginBottom: 4, textTransform: "uppercase" }}>Promoção (R$)</label>
-                <input style={inputStyle} type="number" value={form.promo} onChange={e => setForm(f => ({ ...f, promo: e.target.value }))} placeholder="Deixe vazio" min="0" />
+                {label("Promoção (R$)")}
+                <input style={fieldInput} type="number" value={form.promo} onChange={e => setForm(f => ({ ...f, promo: e.target.value }))} placeholder="Deixe vazio" min="0" />
               </div>
             </div>
 
-            <div style={{ marginBottom: "1rem" }}>
-              <label style={{ fontSize: 11, color: "#8a7a60", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Tags</label>
+            <div style={{ marginBottom: "1.25rem" }}>
+              {label("Tags")}
               <div style={{ display: "flex", gap: 8 }}>
                 {["new","promo"].map(tag => (
                   <button
                     key={tag}
                     onClick={() => toggleTag(tag)}
                     style={{
-                      padding: "4px 12px", borderRadius: 20, fontSize: 12, fontFamily: "inherit", cursor: "pointer",
-                      background: form.tags.includes(tag) ? "#a06420" : "none",
-                      border: "0.5px solid " + (form.tags.includes(tag) ? "#a06420" : "#d8d0c0"),
-                      color: form.tags.includes(tag) ? "#fff" : "#8a7a60"
+                      padding: "5px 14px", borderRadius: 20, fontSize: 13, fontFamily: "inherit", cursor: "pointer",
+                      background: form.tags.includes(tag) ? C.ink : "transparent",
+                      border: `1px solid ${form.tags.includes(tag) ? C.ink : C.line}`,
+                      color: form.tags.includes(tag) ? C.surface : C.inkSoft
                     }}
                   >{tag === "new" ? "Novidade" : "Promoção"}</button>
                 ))}
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: "1rem", borderTop: "0.5px solid #ece8e0" }}>
+            <div style={{ display: "flex", gap: 8, paddingTop: "1rem", borderTop: `1px solid ${C.line}` }}>
               <button
                 onClick={() => setModal(null)}
-                style={{ background: "none", border: "0.5px solid #d8d0c0", borderRadius: 6, padding: "8px 14px", fontSize: 13, fontFamily: "inherit", cursor: "pointer", color: "#1a1208" }}
+                style={{ flex: 1, background: "none", border: `1px solid ${C.line}`, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", cursor: "pointer", color: C.inkSoft }}
               >Cancelar</button>
               <button
                 onClick={save}
-                style={{ background: "#a06420", border: "none", color: "#fff", borderRadius: 6, padding: "8px 16px", fontSize: 13, fontFamily: "inherit", fontWeight: 500, cursor: "pointer" }}
+                style={{ flex: 2, background: C.ink, border: "none", color: C.surface, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}
               >Salvar</button>
             </div>
           </div>
@@ -262,18 +281,20 @@ export default function Admin() {
 
       {/* Confirm delete */}
       {confirmDelete && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: "1.5rem", width: "100%", maxWidth: 340 }}>
-            <p style={{ fontSize: 15, fontWeight: 500, color: "#1a1208", marginBottom: 8 }}>Confirmar exclusão</p>
-            <p style={{ fontSize: 13, color: "#5a4e38", marginBottom: "1.25rem" }}>Remover <strong>{confirmDelete.name}</strong> do catálogo?</p>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(34,31,26,0.45)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div style={{ background: C.surface, borderRadius: "14px 14px 0 0", padding: "1.5rem 1.25rem 2rem", width: "100%", maxWidth: 520 }}>
+            <p style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 6 }}>Confirmar exclusão</p>
+            <p style={{ fontSize: 13.5, color: C.inkSoft, marginBottom: "1.5rem" }}>
+              Remover <strong style={{ color: C.ink }}>{confirmDelete.name}</strong> do catálogo? Esta ação não pode ser desfeita.
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
               <button
                 onClick={() => setConfirmDelete(null)}
-                style={{ background: "none", border: "0.5px solid #d8d0c0", borderRadius: 6, padding: "8px 14px", fontSize: 13, fontFamily: "inherit", cursor: "pointer", color: "#1a1208" }}
+                style={{ flex: 1, background: "none", border: `1px solid ${C.line}`, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", cursor: "pointer", color: C.inkSoft }}
               >Cancelar</button>
               <button
                 onClick={() => { deleteWine(confirmDelete.id); setConfirmDelete(null); }}
-                style={{ background: "#c04030", border: "none", color: "#fff", borderRadius: 6, padding: "8px 14px", fontSize: 13, fontFamily: "inherit", fontWeight: 500, cursor: "pointer" }}
+                style={{ flex: 1, background: C.danger, border: "none", color: C.surface, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}
               >Excluir</button>
             </div>
           </div>
