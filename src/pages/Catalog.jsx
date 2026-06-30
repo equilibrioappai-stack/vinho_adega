@@ -1,10 +1,11 @@
 import { useState, useMemo } from "react";
 import { useWines } from "../components/WineContext";
+import Cart from "./Cart";
 
 const TYPE_ICON = { Tinto: "🍷", Branco: "🥂", Rosé: "🌸", Espumante: "✨", Azeite: "🫒" };
 
 export default function Catalog() {
-  const { wines } = useWines();
+  const { wines, cart, addToCart, decreaseFromCart } = useWines();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [originFilter, setOriginFilter] = useState("all");
@@ -111,7 +112,7 @@ export default function Catalog() {
         {filtered.length} rótulos encontrados
       </p>
 
-      {/* Grid: 3 colunas fixas em telas largas, com mais respiro entre cards */}
+      {/* Grid */}
       <div
         style={{
           padding: "0.5rem 1.5rem 3rem",
@@ -128,6 +129,7 @@ export default function Catalog() {
         {filtered.map(w => {
           const isPromo = !!w.promo;
           const isNew = w.tags?.includes("new");
+          const qtyInCart = cart[w.id] || 0;
           return (
             <div
               key={w.id}
@@ -165,20 +167,41 @@ export default function Catalog() {
                   </div>
                 )}
 
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                  {isPromo ? (
-                    <>
-                      <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 21, fontWeight: 600, color: "#d8a838" }}>
-                        R$ {w.promo.toLocaleString("pt-BR")}
-                      </span>
-                      <span style={{ fontSize: 11, color: "#5a4e38", textDecoration: "line-through" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    {isPromo ? (
+                      <>
+                        <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 21, fontWeight: 600, color: "#d8a838" }}>
+                          R$ {w.promo.toLocaleString("pt-BR")}
+                        </span>
+                        <span style={{ fontSize: 11, color: "#5a4e38", textDecoration: "line-through" }}>
+                          R$ {w.price.toLocaleString("pt-BR")}
+                        </span>
+                      </>
+                    ) : (
+                      <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 21, fontWeight: 400, color: "#e8d8b8" }}>
                         R$ {w.price.toLocaleString("pt-BR")}
                       </span>
-                    </>
+                    )}
+                  </div>
+
+                  {qtyInCart === 0 ? (
+                    <button
+                      onClick={() => addToCart(w.id)}
+                      style={{
+                        background: "#a06420", color: "#0f0c08", border: "none",
+                        borderRadius: 6, padding: "5px 12px", fontSize: 11.5, fontWeight: 600,
+                        cursor: "pointer", fontFamily: "inherit",
+                      }}
+                    >
+                      Adicionar
+                    </button>
                   ) : (
-                    <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 21, fontWeight: 400, color: "#e8d8b8" }}>
-                      R$ {w.price.toLocaleString("pt-BR")}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <button onClick={() => decreaseFromCart(w.id)} style={qtyBtn}>–</button>
+                      <span style={{ fontSize: 12.5, minWidth: 14, textAlign: "center" }}>{qtyInCart}</span>
+                      <button onClick={() => addToCart(w.id)} style={qtyBtn}>+</button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -192,6 +215,14 @@ export default function Catalog() {
         <p style={{ fontSize: 11, color: "#5a4e38" }}>Envio para todo o Brasil via transportadora · Pagamento antecipado via PIX</p>
         <p style={{ fontSize: 13, color: "#a06420", marginTop: 4, fontWeight: 500 }}>41 99648-3811 (Matheus Lucio)</p>
       </div>
+
+      <Cart />
     </div>
   );
 }
+
+const qtyBtn = {
+  background: "#15110a", border: "0.5px solid #3a2e1e", color: "#e8e0d0",
+  borderRadius: 6, width: 22, height: 22, fontSize: 12, cursor: "pointer",
+  display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
+};
