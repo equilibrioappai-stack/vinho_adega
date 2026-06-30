@@ -3,14 +3,6 @@ import { useWines } from "../components/WineContext";
 
 const TYPE_ICON = { Tinto: "🍷", Branco: "🥂", Rosé: "🌸", Espumante: "✨", Azeite: "🫒" };
 
-const BADGE_STYLE = {
-  Tinto:     { bg: "#3a1520", color: "#c87890" },
-  Branco:    { bg: "#1a2e18", color: "#78b870" },
-  Rosé:      { bg: "#2e1828", color: "#c878a8" },
-  Espumante: { bg: "#182038", color: "#7898c8" },
-  Azeite:    { bg: "#2e2808", color: "#c8a838" },
-};
-
 export default function Catalog() {
   const { wines } = useWines();
   const [search, setSearch] = useState("");
@@ -34,22 +26,21 @@ export default function Catalog() {
   }, [wines, search, typeFilter, originFilter, sort]);
 
   const FILTERS = [
-    { label: "Todos", value: "all", key: "type" },
-    { label: "Tintos", value: "Tinto", key: "type" },
-    { label: "Brancos", value: "Branco", key: "type" },
-    { label: "Rosés", value: "Rosé", key: "type" },
-    { label: "Espumantes", value: "Espumante", key: "type" },
+    { label: "Todos", value: "all" },
+    { label: "Tintos", value: "Tinto" },
+    { label: "Brancos", value: "Branco" },
+    { label: "Rosés", value: "Rosé" },
+    { label: "Espumantes", value: "Espumante" },
   ];
 
   const ORIGINS = [
-    { label: "Todas origens", value: "all" },
     { label: "Argentina", value: "ARGENTINA" },
     { label: "Chile", value: "CHILE" },
     { label: "Portugal", value: "PORTUGAL" },
   ];
 
   return (
-    <div style={{ background: "#0f0c08", minHeight: "100vh", color: "#e8e0d0", fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ background: "#15110a", minHeight: "100vh", color: "#e8e0d0", fontFamily: "'DM Sans', sans-serif" }}>
       {/* Hero */}
       <div style={{ padding: "2rem 1.5rem 1.5rem", borderBottom: "0.5px solid #3a2e1e", background: "#1a1208" }}>
         <p style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "#a06420", marginBottom: 6 }}>
@@ -101,7 +92,7 @@ export default function Catalog() {
             }}
           >{f.label}</button>
         ))}
-        {ORIGINS.filter(o => o.value !== "all").map(o => (
+        {ORIGINS.map(o => (
           <button
             key={o.value}
             onClick={() => setOriginFilter(originFilter === o.value ? "all" : o.value)}
@@ -120,34 +111,64 @@ export default function Catalog() {
         {filtered.length} rótulos encontrados
       </p>
 
-      {/* Grid */}
-      <div style={{ padding: "0.5rem 1.5rem 3rem", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
+      {/* Grid: 3 colunas fixas em telas largas, com mais respiro entre cards */}
+      <div
+        style={{
+          padding: "0.5rem 1.5rem 3rem",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+          gap: 18,
+        }}
+      >
         {filtered.length === 0 && (
           <p style={{ color: "#5a4e38", padding: "2rem 0", gridColumn: "1/-1", textAlign: "center" }}>
             Nenhum rótulo encontrado.
           </p>
         )}
         {filtered.map(w => {
-          const bs = BADGE_STYLE[w.type] || BADGE_STYLE.Tinto;
+          const isPromo = !!w.promo;
+          const isNew = w.tags?.includes("new");
           return (
-            <div key={w.id} style={{ background: "#1a1510", border: "0.5px solid #2e2418", borderRadius: 10, padding: "1rem", display: "flex", gap: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 8, background: "#2a1218", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+            <div
+              key={w.id}
+              style={{
+                background: "#231c12",
+                border: "0.5px solid #3a2e1e",
+                borderRadius: 12,
+                padding: "1.1rem",
+                display: "flex",
+                gap: 14,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+              }}
+            >
+              <div style={{ width: 38, height: 38, borderRadius: 8, background: "#2e2418", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
                 {TYPE_ICON[w.type] || "🍾"}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 500, color: "#e8e0d0", lineHeight: 1.3, marginBottom: 4 }}>{w.name}</p>
-                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
-                  <span style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase", padding: "2px 7px", borderRadius: 3, fontWeight: 500, background: bs.bg, color: bs.color }}>
-                    {w.type}
-                  </span>
-                  {w.promo && <span style={{ fontSize: 9, letterSpacing: 1, padding: "2px 7px", borderRadius: 3, background: "#3a2808", color: "#c89838", textTransform: "uppercase" }}>Promoção</span>}
-                  {w.tags?.includes("new") && <span style={{ fontSize: 9, letterSpacing: 1, padding: "2px 7px", borderRadius: 3, background: "#182030", color: "#6888c8", textTransform: "uppercase" }}>Novidade</span>}
-                  <span style={{ fontSize: 10, color: "#5a4e38", textTransform: "uppercase", letterSpacing: 1 }}>{w.origin}</span>
-                </div>
+                <p style={{ fontSize: 13.5, fontWeight: 500, color: "#e8e0d0", lineHeight: 1.3, marginBottom: 3 }}>{w.name}</p>
+                <p style={{ fontSize: 10.5, color: "#6a5c44", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                  {w.type} · {w.origin.charAt(0) + w.origin.slice(1).toLowerCase()}
+                </p>
+
+                {(isPromo || isNew) && (
+                  <div style={{ marginBottom: 8 }}>
+                    {isPromo && (
+                      <span style={{ fontSize: 9, letterSpacing: 1, padding: "2px 8px", borderRadius: 3, background: "#3a2808", color: "#d8a838", textTransform: "uppercase", fontWeight: 600 }}>
+                        Promoção
+                      </span>
+                    )}
+                    {isNew && !isPromo && (
+                      <span style={{ fontSize: 9, letterSpacing: 1, padding: "2px 8px", borderRadius: 3, background: "#182030", color: "#7898d8", textTransform: "uppercase", fontWeight: 600 }}>
+                        Novidade
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                  {w.promo ? (
+                  {isPromo ? (
                     <>
-                      <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 600, color: "#c89838" }}>
+                      <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 21, fontWeight: 600, color: "#d8a838" }}>
                         R$ {w.promo.toLocaleString("pt-BR")}
                       </span>
                       <span style={{ fontSize: 11, color: "#5a4e38", textDecoration: "line-through" }}>
@@ -155,7 +176,7 @@ export default function Catalog() {
                       </span>
                     </>
                   ) : (
-                    <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 400, color: "#e8d8b8" }}>
+                    <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 21, fontWeight: 400, color: "#e8d8b8" }}>
                       R$ {w.price.toLocaleString("pt-BR")}
                     </span>
                   )}
