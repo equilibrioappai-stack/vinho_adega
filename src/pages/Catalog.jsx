@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useWines } from "../components/WineContext";
+import { C, FONT } from "../theme";
 import Cart from "./Cart";
 
 const TYPE_ICON = { Tinto: "🍷", Branco: "🥂", Rosé: "🌸", Espumante: "✨", Azeite: "🫒" };
@@ -41,16 +42,16 @@ export default function Catalog() {
   ];
 
   return (
-    <div style={{ background: "#15110a", minHeight: "100vh", color: "#e8e0d0", fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ background: C.bg, minHeight: "100vh", color: C.ink, fontFamily: FONT }}>
       {/* Hero */}
-      <div style={{ padding: "2rem 1.5rem 1.5rem", borderBottom: "0.5px solid #3a2e1e", background: "#1a1208" }}>
-        <p style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "#a06420", marginBottom: 6 }}>
+      <div style={{ padding: "1.75rem 1.25rem 1.25rem", borderBottom: `1px solid ${C.line}` }}>
+        <p style={{ fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: C.gold, marginBottom: 6, fontWeight: 600 }}>
           Catálogo exclusivo
         </p>
-        <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 38, fontWeight: 400, color: "#f0e8d8", lineHeight: 1.1, marginBottom: 4 }}>
-          Adega<br />Selecionada
+        <h1 style={{ fontFamily: FONT, fontSize: 30, fontWeight: 700, color: C.ink, lineHeight: 1.15, marginBottom: 4, letterSpacing: -0.5 }}>
+          Adega Selecionada
         </h1>
-        <p style={{ fontSize: 12, color: "#7a6848", marginBottom: "1.5rem" }}>
+        <p style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: "1.25rem" }}>
           Argentina · Chile · Portugal · Espumantes
         </p>
 
@@ -61,14 +62,14 @@ export default function Catalog() {
             placeholder="Buscar rótulo..."
             style={{
               flex: 1, minWidth: 140,
-              background: "#1e1810", border: "0.5px solid #3a2e1e", color: "#e8e0d0",
-              borderRadius: 6, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", outline: "none"
+              background: C.surface, border: `1px solid ${C.line}`, color: C.ink,
+              borderRadius: 8, padding: "10px 12px", fontSize: 14, fontFamily: "inherit", outline: "none"
             }}
           />
           <select
             value={sort}
             onChange={e => setSort(e.target.value)}
-            style={{ background: "#1e1810", border: "0.5px solid #3a2e1e", color: "#e8e0d0", borderRadius: 6, padding: "8px 10px", fontSize: 12, fontFamily: "inherit" }}
+            style={{ background: C.surface, border: `1px solid ${C.line}`, color: C.ink, borderRadius: 8, padding: "10px 10px", fontSize: 13, fontFamily: "inherit" }}
           >
             <option value="name">Nome A–Z</option>
             <option value="price-asc">Menor preço</option>
@@ -78,18 +79,18 @@ export default function Catalog() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div style={{ padding: "0.75rem 1.5rem", display: "flex", gap: 6, flexWrap: "wrap", borderBottom: "0.5px solid #1e1810" }}>
+      {/* Filtros */}
+      <div style={{ padding: "0.85rem 1.25rem", display: "flex", gap: 6, flexWrap: "wrap", borderBottom: `1px solid ${C.line}` }}>
         {FILTERS.map(f => (
           <button
             key={f.value}
             onClick={() => setTypeFilter(f.value)}
             style={{
-              background: typeFilter === f.value ? "#a06420" : "transparent",
-              border: "0.5px solid " + (typeFilter === f.value ? "#a06420" : "#3a2e1e"),
-              color: typeFilter === f.value ? "#0f0c08" : "#7a6848",
-              borderRadius: 20, padding: "4px 12px", fontSize: 11, fontFamily: "inherit",
-              cursor: "pointer", fontWeight: typeFilter === f.value ? 500 : 400
+              background: typeFilter === f.value ? C.ink : "transparent",
+              border: `1px solid ${typeFilter === f.value ? C.ink : C.line}`,
+              color: typeFilter === f.value ? C.surface : C.inkSoft,
+              borderRadius: 20, padding: "5px 13px", fontSize: 12, fontFamily: "inherit",
+              cursor: "pointer", fontWeight: typeFilter === f.value ? 600 : 400
             }}
           >{f.label}</button>
         ))}
@@ -98,33 +99,24 @@ export default function Catalog() {
             key={o.value}
             onClick={() => setOriginFilter(originFilter === o.value ? "all" : o.value)}
             style={{
-              background: originFilter === o.value ? "#6a4020" : "transparent",
-              border: "0.5px solid " + (originFilter === o.value ? "#6a4020" : "#3a2e1e"),
-              color: originFilter === o.value ? "#f0d8b0" : "#5a4e38",
-              borderRadius: 20, padding: "4px 12px", fontSize: 11, fontFamily: "inherit",
+              background: originFilter === o.value ? C.accentSoft : "transparent",
+              border: `1px solid ${originFilter === o.value ? C.accent : C.line}`,
+              color: originFilter === o.value ? C.accent : C.muted,
+              borderRadius: 20, padding: "5px 13px", fontSize: 12, fontFamily: "inherit",
               cursor: "pointer"
             }}
           >{o.label}</button>
         ))}
       </div>
 
-      <p style={{ padding: "0.6rem 1.5rem", fontSize: 11, color: "#5a4e38" }}>
+      <p style={{ padding: "0.7rem 1.25rem 0.2rem", fontSize: 11.5, color: C.muted }}>
         {filtered.length} rótulos encontrados
       </p>
 
-      {/* Grid */}
-      <div
-        style={{
-          maxWidth: 1280,
-          margin: "0 auto",
-          padding: "0.5rem 1.5rem 3rem",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))",
-          gap: 28,
-        }}
-      >
+      {/* Lista, uma coluna, divisórias finas em vez de cards */}
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "0.25rem 1.25rem 4rem" }}>
         {filtered.length === 0 && (
-          <p style={{ color: "#5a4e38", padding: "2rem 0", gridColumn: "1/-1", textAlign: "center" }}>
+          <p style={{ color: C.muted, padding: "2.5rem 0", textAlign: "center", fontSize: 13.5 }}>
             Nenhum rótulo encontrado.
           </p>
         )}
@@ -136,52 +128,48 @@ export default function Catalog() {
             <div
               key={w.id}
               style={{
-                background: "#2a2118",
-                border: "0.5px solid #4a3a26",
-                borderRadius: 12,
-                padding: "1.1rem",
                 display: "flex",
-                gap: 14,
-                boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                gap: 12,
+                alignItems: "flex-start",
+                padding: "1rem 0",
+                borderBottom: `1px solid ${C.line}`,
               }}
             >
-              <div style={{ width: 38, height: 38, borderRadius: 8, background: "#352a1c", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+              <div style={{ fontSize: 20, lineHeight: 1, marginTop: 2, flexShrink: 0, width: 24, textAlign: "center" }}>
                 {TYPE_ICON[w.type] || "🍾"}
               </div>
+
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13.5, fontWeight: 500, color: "#e8e0d0", lineHeight: 1.3, marginBottom: 3 }}>{w.name}</p>
-                <p style={{ fontSize: 10.5, color: "#6a5c44", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+                  <p style={{ fontSize: 14.5, fontWeight: 600, color: C.ink, lineHeight: 1.3 }}>{w.name}</p>
+                  {isPromo && (
+                    <span style={{ fontSize: 9.5, letterSpacing: 0.5, color: C.gold, fontWeight: 700, textTransform: "uppercase" }}>
+                      · promoção
+                    </span>
+                  )}
+                  {isNew && !isPromo && (
+                    <span style={{ fontSize: 9.5, letterSpacing: 0.5, color: C.inkSoft, fontWeight: 700, textTransform: "uppercase" }}>
+                      · novidade
+                    </span>
+                  )}
+                </div>
+                <p style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: 0.4, marginTop: 2, marginBottom: 10 }}>
                   {w.type} · {w.origin.charAt(0) + w.origin.slice(1).toLowerCase()}
                 </p>
 
-                {(isPromo || isNew) && (
-                  <div style={{ marginBottom: 8 }}>
-                    {isPromo && (
-                      <span style={{ fontSize: 9, letterSpacing: 1, padding: "2px 8px", borderRadius: 3, background: "#3a2808", color: "#d8a838", textTransform: "uppercase", fontWeight: 600 }}>
-                        Promoção
-                      </span>
-                    )}
-                    {isNew && !isPromo && (
-                      <span style={{ fontSize: 9, letterSpacing: 1, padding: "2px 8px", borderRadius: 3, background: "#182030", color: "#7898d8", textTransform: "uppercase", fontWeight: 600 }}>
-                        Novidade
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                     {isPromo ? (
                       <>
-                        <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 21, fontWeight: 600, color: "#d8a838" }}>
+                        <span style={{ fontFamily: FONT, fontSize: 16.5, fontWeight: 700, color: C.accent }}>
                           R$ {w.promo.toLocaleString("pt-BR")}
                         </span>
-                        <span style={{ fontSize: 11, color: "#5a4e38", textDecoration: "line-through" }}>
+                        <span style={{ fontSize: 11.5, color: C.muted, textDecoration: "line-through" }}>
                           R$ {w.price.toLocaleString("pt-BR")}
                         </span>
                       </>
                     ) : (
-                      <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 21, fontWeight: 400, color: "#e8d8b8" }}>
+                      <span style={{ fontFamily: FONT, fontSize: 16.5, fontWeight: 700, color: C.ink }}>
                         R$ {w.price.toLocaleString("pt-BR")}
                       </span>
                     )}
@@ -191,17 +179,17 @@ export default function Catalog() {
                     <button
                       onClick={() => addToCart(w.id)}
                       style={{
-                        background: "#a06420", color: "#0f0c08", border: "none",
-                        borderRadius: 6, padding: "5px 12px", fontSize: 11.5, fontWeight: 600,
+                        background: C.ink, color: C.surface, border: "none",
+                        borderRadius: 7, padding: "7px 14px", fontSize: 12, fontWeight: 600,
                         cursor: "pointer", fontFamily: "inherit",
                       }}
                     >
                       Adicionar
                     </button>
                   ) : (
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <button onClick={() => decreaseFromCart(w.id)} style={qtyBtn}>–</button>
-                      <span style={{ fontSize: 12.5, minWidth: 14, textAlign: "center" }}>{qtyInCart}</span>
+                      <span style={{ fontSize: 13, minWidth: 14, textAlign: "center", fontWeight: 600 }}>{qtyInCart}</span>
                       <button onClick={() => addToCart(w.id)} style={qtyBtn}>+</button>
                     </div>
                   )}
@@ -212,10 +200,10 @@ export default function Catalog() {
         })}
       </div>
 
-      {/* Footer */}
-      <div style={{ borderTop: "0.5px solid #1e1810", padding: "1rem 1.5rem", textAlign: "center" }}>
-        <p style={{ fontSize: 11, color: "#5a4e38" }}>Envio para todo o Brasil via transportadora · Pagamento antecipado via PIX</p>
-        <p style={{ fontSize: 13, color: "#a06420", marginTop: 4, fontWeight: 500 }}>41 99648-3811 (Matheus Lucio)</p>
+      {/* Rodapé */}
+      <div style={{ borderTop: `1px solid ${C.line}`, padding: "1.25rem", textAlign: "center" }}>
+        <p style={{ fontSize: 11.5, color: C.muted }}>Envio para todo o Brasil via transportadora · Pagamento antecipado via PIX</p>
+        <p style={{ fontSize: 13, color: C.accent, marginTop: 4, fontWeight: 600 }}>41 99648-3811 (Matheus Lucio)</p>
       </div>
 
       <Cart />
@@ -224,7 +212,7 @@ export default function Catalog() {
 }
 
 const qtyBtn = {
-  background: "#15110a", border: "0.5px solid #3a2e1e", color: "#e8e0d0",
-  borderRadius: 6, width: 22, height: 22, fontSize: 12, cursor: "pointer",
+  background: C.surface, border: `1px solid ${C.line}`, color: C.ink,
+  borderRadius: 6, width: 24, height: 24, fontSize: 13, cursor: "pointer",
   display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
 };
