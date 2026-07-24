@@ -14,7 +14,7 @@
 set role authenticated;
 set request.jwt.claim.sub to 'a9355dd1-6ee3-4c1e-bec4-64e7e213737d';
 select id, name from wines
-where supplier_id = (select id from suppliers where slug = 'fornecedor-teste-a')
+where supplier_id = (select id from suppliers_public where slug = 'fornecedor-teste-a')
 limit 3;
 
 -- BLOCO 2 — Fornecedor B tenta INSERIR um vinho no catálogo do Fornecedor A
@@ -22,14 +22,14 @@ limit 3;
 set role authenticated;
 set request.jwt.claim.sub to 'a9355dd1-6ee3-4c1e-bec4-64e7e213737d';
 insert into wines (supplier_id, name, type, origin, price)
-values ((select id from suppliers where slug = 'fornecedor-teste-a'), 'Invasão Teste', 'Tinto', 'ARGENTINA', 1);
+values ((select id from suppliers_public where slug = 'fornecedor-teste-a'), 'Invasão Teste', 'Tinto', 'ARGENTINA', 1);
 
 -- BLOCO 3 — Fornecedor A insere um vinho de verdade no próprio catálogo
 -- Esperado: uma tabela com 1 linha mostrando o id criado (anote esse id)
 set role authenticated;
 set request.jwt.claim.sub to '5fe0df1d-00a5-4043-a084-6ac342f652bc';
 insert into wines (supplier_id, name, type, origin, price)
-values ((select id from suppliers where slug = 'fornecedor-teste-a'), 'Vinho Teste RLS', 'Tinto', 'ARGENTINA', 50)
+values ((select id from suppliers_public where slug = 'fornecedor-teste-a'), 'Vinho Teste RLS', 'Tinto', 'ARGENTINA', 50)
 returning id;
 
 -- BLOCO 4a — troque <ID_DO_BLOCO_3> pelo id anotado acima.
