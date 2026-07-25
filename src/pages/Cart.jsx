@@ -2,8 +2,6 @@ import { useState } from "react";
 import { useWines } from "../components/WineContext";
 import { C, FONT } from "../theme";
 
-const WHATSAPP_NUMBER = "5541996483811"; // formato internacional, sem espaços ou símbolos
-
 const inputStyle = {
   width: "100%",
   background: C.bg,
@@ -27,9 +25,9 @@ const labelStyle = {
   display: "block",
 };
 
-function buildMessage(cartItems, total, form) {
+function buildMessage(cartItems, total, form, greeting) {
   const lines = [];
-  lines.push("Olá! Gostaria de fazer um pedido:");
+  lines.push(greeting);
   lines.push("");
   cartItems.forEach(item => {
     lines.push(`🍷 ${item.wine.name} x${item.qty} — R$ ${item.lineTotal.toLocaleString("pt-BR")}`);
@@ -48,7 +46,8 @@ function buildMessage(cartItems, total, form) {
 }
 
 export default function Cart() {
-  const { cartItems, cartCount, cartTotal, addToCart, decreaseFromCart, removeFromCart, clearCart } = useWines();
+  const { supplier, cartItems, cartCount, cartTotal, addToCart, decreaseFromCart, removeFromCart, clearCart } = useWines();
+  const accent = supplier?.theme_color || C.accent;
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState("review"); // "review" | "checkout"
   const [form, setForm] = useState({ nome: "", telefone: "", cidade: "", bairro: "", endereco: "", cep: "" });
@@ -67,8 +66,8 @@ export default function Cart() {
       setError("Preencha pelo menos nome, telefone e endereço.");
       return;
     }
-    const message = buildMessage(cartItems, cartTotal, form);
-    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+    const message = buildMessage(cartItems, cartTotal, form, supplier.cart_greeting);
+    const url = `https://wa.me/${supplier.whatsapp_number}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
     clearCart();
     setForm({ nome: "", telefone: "", cidade: "", bairro: "", endereco: "", cep: "" });
@@ -131,7 +130,7 @@ export default function Cart() {
                     <div key={item.wine.id} style={{ display: "flex", gap: 10, padding: "0.75rem 0", borderBottom: `1px solid ${C.line}` }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 4 }}>{item.wine.name}</p>
-                        <p style={{ fontSize: 12.5, color: C.accent, fontWeight: 600 }}>R$ {item.lineTotal.toLocaleString("pt-BR")}</p>
+                        <p style={{ fontSize: 12.5, color: accent, fontWeight: 600 }}>R$ {item.lineTotal.toLocaleString("pt-BR")}</p>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <button onClick={() => decreaseFromCart(item.wine.id)} style={stepperBtn}>–</button>
@@ -186,7 +185,7 @@ export default function Cart() {
                   <button onClick={() => setStep("review")} style={{ flex: 1, background: "transparent", border: `1px solid ${C.line}`, color: C.inkSoft, borderRadius: 8, padding: "12px", fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" }}>
                     Voltar
                   </button>
-                  <button onClick={handleConfirm} style={{ flex: 2, background: C.success, color: C.surface, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  <button onClick={handleConfirm} style={{ flex: 2, background: accent, color: C.surface, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
                     Enviar pelo WhatsApp
                   </button>
                 </div>

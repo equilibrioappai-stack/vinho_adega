@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { useWines } from "../components/WineContext";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { supabase } from "../supabase";
 import { C, FONT } from "../theme";
-
-const ADMIN_PASSWORD = "adega2025";
+import { parseWinesWorkbook } from "../lib/importWines";
 
 const EMPTY_FORM = { name: "", type: "Tinto", origin: "ARGENTINA", price: "", promo: "", tags: [] };
 
@@ -13,20 +12,71 @@ const label = (text) => (
 );
 
 export default function Admin() {
-  const { wines, addWine, updateWine, deleteWine } = useWines();
-  const [authed, setAuthed] = useState(false);
-  const [pw, setPw] = useState("");
-  const [pwError, setPwError] = useState(false);
+  const [session, setSession] = useState(undefined); // undefined = carregando, null = deslogado
+  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
+  const [loginError, setLoginError] = useState("");
+
+  const [supplier, setSupplier] = useState(null);
+  const [wines, setWines] = useState([]);
+  const [loadError, setLoadError] = useState("");
+
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [saveError, setSaveError] = useState("");
 
-  const login = () => {
-    if (pw === ADMIN_PASSWORD) { setAuthed(true); setPwError(false); }
-    else setPwError(true);
+  const fileInputRef = useRef(null);
+  const [importPreview, setImportPreview] = useState(null); // { wines, errors }
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null); // { inserted, error }
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const loadSupplierAndWines = useCallback(async (userId) => {
+    setLoadError("");
+    const { data: supplierRow, error: supplierErr } = await supabase
+      .from("suppliers")
+      .select("*")
+      .eq("auth_user_id", userId)
+      .maybeSingle();
+
+    if (supplierErr || !supplierRow) {
+      setLoadError("Este login não está vinculado a nenhum fornecedor cadastrado.");
+      return;
+    }
+    setSupplier(supplierRow);
+
+    const { data: wineRows, error: wineErr } = await supabase
+      .from("wines")
+      .select("*")
+      .eq("supplier_id", supplierRow.id)
+      .order("name");
+
+    if (wineErr) {
+      setLoadError("Não foi possível carregar o catálogo.");
+      return;
+    }
+    setWines(wineRows || []);
+  }, []);
+
+  useEffect(() => {
+    if (session) loadSupplierAndWines(session.user.id);
+    else { setSupplier(null); setWines([]); }
+  }, [session, loadSupplierAndWines]);
+
+  const login = async () => {
+    setLoginError("");
+    const { error } = await supabase.auth.signInWithPassword(loginForm);
+    if (error) setLoginError("Login ou senha incorretos.");
   };
+
+  const logout = () => supabase.auth.signOut();
 
   const filtered = wines.filter(w => {
     const q = search.toLowerCase();
@@ -35,27 +85,77 @@ export default function Admin() {
     return matchS && matchT;
   });
 
-  const openAdd = () => { setForm(EMPTY_FORM); setModal({ mode: "add" }); };
+  const openAdd = () => { setForm(EMPTY_FORM); setSaveError(""); setModal({ mode: "add" }); };
   const openEdit = (w) => {
-    setForm({ name: w.name, type: w.type, origin: w.origin, price: w.price, promo: w.promo || "", tags: w.tags || [] });
+    setForm({ name: w.name, type: w.type, origin: w.origin, price: w.price, promo: w.promo ?? "", tags: w.tags || [] });
+    setSaveError("");
     setModal({ mode: "edit", id: w.id });
   };
 
-  const save = () => {
+  const save = async () => {
     if (!form.name.trim() || !form.price) return;
-    const wine = {
+    setSaveError("");
+    const payload = {
       name: form.name.trim(), type: form.type, origin: form.origin,
       price: parseFloat(form.price),
       promo: form.promo ? parseFloat(form.promo) : null,
       tags: form.tags,
     };
-    if (modal.mode === "add") addWine(wine);
-    else updateWine(modal.id, wine);
+
+    if (modal.mode === "add") {
+      const { data, error } = await supabase
+        .from("wines")
+        .insert({ ...payload, supplier_id: supplier.id })
+        .select()
+        .single();
+      if (error) { setSaveError("Não foi possível salvar: " + error.message); return; }
+      setWines(w => [...w, data].sort((a, b) => a.name.localeCompare(b.name)));
+    } else {
+      const { data, error } = await supabase
+        .from("wines")
+        .update(payload)
+        .eq("id", modal.id)
+        .select()
+        .single();
+      if (error) { setSaveError("Não foi possível salvar: " + error.message); return; }
+      setWines(w => w.map(x => x.id === modal.id ? data : x));
+    }
     setModal(null);
   };
 
   const toggleTag = (tag) => {
     setForm(f => ({ ...f, tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag] }));
+  };
+
+  const doDelete = async (wine) => {
+    const { error } = await supabase.from("wines").delete().eq("id", wine.id);
+    if (!error) setWines(w => w.filter(x => x.id !== wine.id));
+    setConfirmDelete(null);
+  };
+
+  const handleFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setImportResult(null);
+    const buffer = await file.arrayBuffer();
+    const { wines: parsedWines, errors } = await parseWinesWorkbook(buffer);
+    setImportPreview({ wines: parsedWines, errors });
+  };
+
+  const confirmImport = async () => {
+    if (!importPreview || importPreview.wines.length === 0) return;
+    setImporting(true);
+    const payload = importPreview.wines.map(w => ({ ...w, supplier_id: supplier.id }));
+    const { data, error } = await supabase.from("wines").insert(payload).select();
+    setImporting(false);
+    if (error) {
+      setImportResult({ inserted: 0, error: error.message });
+      return;
+    }
+    setWines(w => [...w, ...data].sort((a, b) => a.name.localeCompare(b.name)));
+    setImportResult({ inserted: data.length, error: null });
+    setImportPreview(null);
   };
 
   const stats = {
@@ -70,7 +170,11 @@ export default function Admin() {
     color: C.ink, outline: "none", boxSizing: "border-box",
   };
 
-  if (!authed) {
+  if (session === undefined) {
+    return <div style={{ minHeight: "100vh", background: C.bg }} />;
+  }
+
+  if (!session) {
     return (
       <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT, padding: "1rem" }}>
         <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 12, padding: "2rem 1.75rem", width: "100%", maxWidth: 360 }}>
@@ -80,20 +184,40 @@ export default function Admin() {
           <p style={{ fontSize: 22, fontWeight: 700, color: C.ink, marginBottom: 4 }}>Área restrita</p>
           <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: "1.75rem" }}>Acesso exclusivo para o fornecedor</p>
 
+          {label("E-mail")}
+          <input
+            type="email"
+            value={loginForm.email}
+            onChange={e => setLoginForm(f => ({ ...f, email: e.target.value }))}
+            placeholder="voce@exemplo.com"
+            style={{ ...fieldInput, marginBottom: 10 }}
+          />
           {label("Senha")}
           <input
             type="password"
-            value={pw}
-            onChange={e => setPw(e.target.value)}
+            value={loginForm.password}
+            onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))}
             onKeyDown={e => e.key === "Enter" && login()}
             placeholder="••••••••"
-            style={{ ...fieldInput, border: `1px solid ${pwError ? C.danger : C.line}`, marginBottom: 6 }}
+            style={{ ...fieldInput, border: `1px solid ${loginError ? C.danger : C.line}`, marginBottom: 6 }}
           />
-          {pwError && <p style={{ fontSize: 12, color: C.danger, marginBottom: 8 }}>Senha incorreta.</p>}
+          {loginError && <p style={{ fontSize: 12, color: C.danger, marginBottom: 8 }}>{loginError}</p>}
           <button
             onClick={login}
             style={{ width: "100%", background: C.ink, border: "none", color: C.surface, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", fontWeight: 600, cursor: "pointer", marginTop: 6 }}
           >Entrar</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT, padding: "1rem" }}>
+        <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 12, padding: "2rem 1.75rem", width: "100%", maxWidth: 380, textAlign: "center" }}>
+          <p style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 8 }}>Não foi possível abrir o painel</p>
+          <p style={{ fontSize: 13.5, color: C.inkSoft, marginBottom: "1.5rem" }}>{loadError}</p>
+          <button onClick={logout} style={{ background: "none", border: `1px solid ${C.line}`, color: C.inkSoft, borderRadius: 7, padding: "9px 16px", fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}>Sair</button>
         </div>
       </div>
     );
@@ -105,12 +229,12 @@ export default function Admin() {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.line}`, padding: "1rem 1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <p style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: C.gold, fontWeight: 700, marginBottom: 3 }}>
-            Adega Selecionada
+            {supplier?.business_name}
           </p>
           <p style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>Painel do fornecedor</p>
         </div>
         <button
-          onClick={() => setAuthed(false)}
+          onClick={logout}
           style={{ background: "none", border: `1px solid ${C.line}`, color: C.inkSoft, borderRadius: 7, padding: "6px 13px", fontSize: 12.5, fontFamily: "inherit", cursor: "pointer" }}
         >Sair</button>
       </div>
@@ -146,11 +270,21 @@ export default function Admin() {
             onClick={openAdd}
             style={{ background: C.ink, border: "none", color: C.surface, borderRadius: 8, padding: "9px 15px", fontSize: 13.5, fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}
           >+ Novo rótulo</button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={handleFileSelected}
+            style={{ display: "none" }}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={{ background: "none", border: `1px solid ${C.line}`, color: C.inkSoft, borderRadius: 8, padding: "9px 15px", fontSize: 13.5, fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}
+          >Importar planilha</button>
         </div>
 
         {/* Lista de rótulos (mobile-first: não usa table) */}
         <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 10, overflow: "hidden" }}>
-          {/* Cabeçalho visível só em desktop */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 90px 80px 80px 64px", gap: 0, borderBottom: `1px solid ${C.line}`, padding: "9px 14px", background: C.bg }}>
             {["Rótulo","Tipo","Origem","Preço","Promo",""].map(h => (
               <span key={h} style={{ fontSize: 10.5, color: C.muted, textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600 }}>{h}</span>
@@ -265,6 +399,8 @@ export default function Admin() {
               </div>
             </div>
 
+            {saveError && <p style={{ fontSize: 12, color: C.danger, marginBottom: 10 }}>{saveError}</p>}
+
             <div style={{ display: "flex", gap: 8, paddingTop: "1rem", borderTop: `1px solid ${C.line}` }}>
               <button
                 onClick={() => setModal(null)}
@@ -293,11 +429,66 @@ export default function Admin() {
                 style={{ flex: 1, background: "none", border: `1px solid ${C.line}`, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", cursor: "pointer", color: C.inkSoft }}
               >Cancelar</button>
               <button
-                onClick={() => { deleteWine(confirmDelete.id); setConfirmDelete(null); }}
+                onClick={() => doDelete(confirmDelete)}
                 style={{ flex: 1, background: C.danger, border: "none", color: C.surface, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}
               >Excluir</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Preview de importação */}
+      {importPreview && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(34,31,26,0.45)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div style={{ background: C.surface, borderRadius: "14px 14px 0 0", padding: "1.5rem 1.25rem 2rem", width: "100%", maxWidth: 520, maxHeight: "85vh", overflowY: "auto" }}>
+            <p style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 6 }}>Importar planilha</p>
+            <p style={{ fontSize: 13.5, color: C.inkSoft, marginBottom: 12 }}>
+              {importPreview.wines.length} {importPreview.wines.length === 1 ? "vinho pronto" : "vinhos prontos"} pra importar
+              {importPreview.errors.length > 0 && `, ${importPreview.errors.length} linha(s) com problema (serão ignoradas)`}.
+            </p>
+
+            {importPreview.errors.length > 0 && (
+              <div style={{ background: C.bg, border: `1px solid ${C.line}`, borderRadius: 8, padding: "0.75rem 1rem", marginBottom: 12, maxHeight: 140, overflowY: "auto" }}>
+                {importPreview.errors.map((err, i) => (
+                  <p key={i} style={{ fontSize: 12, color: C.danger, marginBottom: 4 }}>{err}</p>
+                ))}
+              </div>
+            )}
+
+            {importPreview.wines.length > 0 && (
+              <div style={{ border: `1px solid ${C.line}`, borderRadius: 8, overflow: "hidden", marginBottom: "1.25rem" }}>
+                {importPreview.wines.slice(0, 8).map((w, i) => (
+                  <div key={i} style={{ padding: "8px 12px", borderBottom: i < Math.min(importPreview.wines.length, 8) - 1 ? `1px solid ${C.line}` : "none", fontSize: 13, color: C.ink, display: "flex", justifyContent: "space-between", gap: 8 }}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</span>
+                    <span style={{ color: C.inkSoft, flexShrink: 0 }}>R$ {w.price}</span>
+                  </div>
+                ))}
+                {importPreview.wines.length > 8 && (
+                  <p style={{ padding: "8px 12px", fontSize: 12, color: C.muted }}>+ {importPreview.wines.length - 8} outros...</p>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8, paddingTop: "1rem", borderTop: `1px solid ${C.line}` }}>
+              <button
+                onClick={() => setImportPreview(null)}
+                style={{ flex: 1, background: "none", border: `1px solid ${C.line}`, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", cursor: "pointer", color: C.inkSoft }}
+              >Cancelar</button>
+              <button
+                onClick={confirmImport}
+                disabled={importPreview.wines.length === 0 || importing}
+                style={{ flex: 2, background: importPreview.wines.length === 0 ? C.line : C.ink, border: "none", color: C.surface, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", fontWeight: 600, cursor: importPreview.wines.length === 0 ? "not-allowed" : "pointer" }}
+              >{importing ? "Importando..." : `Importar ${importPreview.wines.length} vinhos`}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resultado da importação */}
+      {importResult && (
+        <div style={{ position: "fixed", bottom: 20, left: 20, right: 20, maxWidth: 400, margin: "0 auto", zIndex: 200, background: importResult.error ? C.danger : C.success, color: C.surface, borderRadius: 8, padding: "12px 16px", fontSize: 13.5, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <span>{importResult.error ? `Erro ao importar: ${importResult.error}` : `${importResult.inserted} vinhos importados com sucesso.`}</span>
+          <button onClick={() => setImportResult(null)} style={{ background: "none", border: "none", color: C.surface, cursor: "pointer", fontSize: 16, flexShrink: 0 }}>✕</button>
         </div>
       )}
     </div>
