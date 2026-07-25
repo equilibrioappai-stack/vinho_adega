@@ -1,18 +1,27 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import { WineProvider } from "./components/WineContext";
 import Catalog from "./pages/Catalog";
 import Admin from "./pages/Admin";
+import Home from "./pages/Home";
+
+function CatalogRoute() {
+  const { supplierSlug } = useParams();
+  return (
+    <WineProvider supplierSlug={supplierSlug}>
+      <Catalog />
+    </WineProvider>
+  );
+}
 
 export default function App() {
   return (
-    <WineProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Catalog />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </WineProvider>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/catalogo/:supplierSlug" element={<CatalogRoute />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="/" element={<Home />} />
+        <Route path="*" element={<Home />} />
+      </Routes>
+    </BrowserRouter>
   );
 }

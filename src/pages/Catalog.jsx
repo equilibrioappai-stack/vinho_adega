@@ -6,7 +6,7 @@ import Cart from "./Cart";
 const TYPE_ICON = { Tinto: "🍷", Branco: "🥂", Rosé: "🌸", Espumante: "✨", Azeite: "🫒" };
 
 export default function Catalog() {
-  const { wines, cart, addToCart, decreaseFromCart } = useWines();
+  const { supplier, wines, status, cart, addToCart, decreaseFromCart } = useWines();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [originFilter, setOriginFilter] = useState("all");
@@ -41,6 +41,32 @@ export default function Catalog() {
     { label: "Portugal", value: "PORTUGAL" },
   ];
 
+  if (status === "loading") {
+    return <div style={{ minHeight: "100vh", background: C.bg }} />;
+  }
+
+  if (status === "not_found") {
+    return (
+      <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT, padding: "1rem" }}>
+        <div style={{ textAlign: "center", maxWidth: 360 }}>
+          <p style={{ fontSize: 20, fontWeight: 700, color: C.ink, marginBottom: 8 }}>Catálogo não encontrado</p>
+          <p style={{ fontSize: 13.5, color: C.inkSoft }}>Confira o link recebido — este endereço não corresponde a nenhum catálogo ativo.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT, padding: "1rem" }}>
+        <div style={{ textAlign: "center", maxWidth: 360 }}>
+          <p style={{ fontSize: 20, fontWeight: 700, color: C.ink, marginBottom: 8 }}>Não foi possível carregar o catálogo</p>
+          <p style={{ fontSize: 13.5, color: C.inkSoft }}>Tente novamente em instantes.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.ink, fontFamily: FONT }}>
       {/* Hero */}
@@ -49,7 +75,7 @@ export default function Catalog() {
           Catálogo exclusivo
         </p>
         <h1 style={{ fontFamily: FONT, fontSize: 30, fontWeight: 700, color: C.ink, lineHeight: 1.15, marginBottom: 4, letterSpacing: -0.5 }}>
-          Adega Selecionada
+          {supplier?.business_name}
         </h1>
         <p style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: "1.25rem" }}>
           Argentina · Chile · Portugal · Espumantes

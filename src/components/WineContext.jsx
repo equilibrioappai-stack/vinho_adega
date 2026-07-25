@@ -1,19 +1,13 @@
-import { createContext, useContext, useState, useMemo } from "react";
-import { initialWines } from "../data/wines";
+import { createContext, useContext, useState, useEffect, useMemo } from "react";
+import { supabase } from "../supabase";
 
 const WineContext = createContext(null);
 
-export function WineProvider({ children }) {
-  const [wines, setWines] = useState(() => {
-    try {
-      const stored = localStorage.getItem("adega_wines");
-      return stored ? JSON.parse(stored) : initialWines;
-    } catch {
-      return initialWines;
-    }
-  });
+export function WineProvider({ children, supplierSlug }) {
+  const [supplier, setSupplier] = useState(null);
+  const [wines, setWines] = useState([]);
+  const [status, setStatus] = useState("loading"); // "loading" | "ready" | "not_found" | "error"
 
-  // Carrinho: mapa { [wineId]: quantidade }
   const [cart, setCart] = useState(() => {
     try {
       const stored = localStorage.getItem("adega_cart");
@@ -23,26 +17,43 @@ export function WineProvider({ children }) {
     }
   });
 
-  const save = (updated) => {
-    setWines(updated);
-    try { localStorage.setItem("adega_wines", JSON.stringify(updated)); } catch {}
-  };
-
   const saveCart = (updated) => {
     setCart(updated);
     try { localStorage.setItem("adega_cart", JSON.stringify(updated)); } catch {}
   };
 
-  const addWine = (wine) => {
-    const newId = Math.max(0, ...wines.map(w => w.id)) + 1;
-    save([...wines, { ...wine, id: newId }]);
-  };
-  const updateWine = (id, wine) => save(wines.map(w => w.id === id ? { ...wine, id } : w));
-  const deleteWine = (id) => save(wines.filter(w => w.id !== id));
+  useEffect(() => {
+    if (!supplierSlug) { setStatus("not_found"); return; }
+    let cancelled = false;
 
-  const addToCart = (id) => {
-    saveCart({ ...cart, [id]: (cart[id] || 0) + 1 });
-  };
+    (async () => {
+      setStatus("loading");
+      const { data: supplierRow, error: supplierErr } = await supabase
+        .from("suppliers_public")
+        .select("*")
+        .eq("slug", supplierSlug)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (supplierErr || !supplierRow) { setStatus("not_found"); return; }
+      setSupplier(supplierRow);
+
+      const { data: wineRows, error: wineErr } = await supabase
+        .from("wines")
+        .select("*")
+        .eq("supplier_id", supplierRow.id)
+        .order("name");
+
+      if (cancelled) return;
+      if (wineErr) { setStatus("error"); return; }
+      setWines(wineRows || []);
+      setStatus("ready");
+    })();
+
+    return () => { cancelled = true; };
+  }, [supplierSlug]);
+
+  const addToCart = (id) => saveCart({ ...cart, [id]: (cart[id] || 0) + 1 });
   const decreaseFromCart = (id) => {
     const current = cart[id] || 0;
     if (current <= 1) {
@@ -63,7 +74,7 @@ export function WineProvider({ children }) {
   const cartItems = useMemo(() => {
     return Object.entries(cart)
       .map(([id, qty]) => {
-        const wine = wines.find(w => w.id === Number(id));
+        const wine = wines.find(w => String(w.id) === String(id));
         if (!wine) return null;
         const unitPrice = wine.promo || wine.price;
         return { wine, qty, unitPrice, lineTotal: unitPrice * qty };
@@ -76,7 +87,7 @@ export function WineProvider({ children }) {
 
   return (
     <WineContext.Provider value={{
-      wines, addWine, updateWine, deleteWine,
+      supplier, wines, status,
       cart, cartItems, cartCount, cartTotal,
       addToCart, decreaseFromCart, removeFromCart, clearCart,
     }}>
