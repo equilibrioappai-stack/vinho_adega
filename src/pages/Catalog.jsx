@@ -7,6 +7,7 @@ const TYPE_ICON = { Tinto: "🍷", Branco: "🥂", Rosé: "🌸", Espumante: "�
 
 export default function Catalog() {
   const { supplier, wines, status, cart, addToCart, decreaseFromCart } = useWines();
+  const accent = supplier?.theme_color || C.accent;
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [originFilter, setOriginFilter] = useState("all");
@@ -126,8 +127,8 @@ export default function Catalog() {
             onClick={() => setOriginFilter(originFilter === o.value ? "all" : o.value)}
             style={{
               background: originFilter === o.value ? C.accentSoft : "transparent",
-              border: `1px solid ${originFilter === o.value ? C.accent : C.line}`,
-              color: originFilter === o.value ? C.accent : C.muted,
+              border: `1px solid ${originFilter === o.value ? accent : C.line}`,
+              color: originFilter === o.value ? accent : C.muted,
               borderRadius: 20, padding: "5px 13px", fontSize: 12, fontFamily: "inherit",
               cursor: "pointer"
             }}
@@ -187,7 +188,7 @@ export default function Catalog() {
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                     {isPromo ? (
                       <>
-                        <span style={{ fontFamily: FONT, fontSize: 16.5, fontWeight: 700, color: C.accent }}>
+                        <span style={{ fontFamily: FONT, fontSize: 16.5, fontWeight: 700, color: accent }}>
                           R$ {w.promo.toLocaleString("pt-BR")}
                         </span>
                         <span style={{ fontSize: 11.5, color: C.muted, textDecoration: "line-through" }}>
@@ -229,7 +230,9 @@ export default function Catalog() {
       {/* Rodapé */}
       <div style={{ borderTop: `1px solid ${C.line}`, padding: "1.25rem", textAlign: "center" }}>
         <p style={{ fontSize: 11.5, color: C.muted }}>Envio para todo o Brasil via transportadora · Pagamento antecipado via PIX</p>
-        <p style={{ fontSize: 13, color: C.accent, marginTop: 4, fontWeight: 600 }}>41 99648-3811 (Matheus Lucio)</p>
+        {supplier?.whatsapp_number && (
+          <p style={{ fontSize: 13, color: accent, marginTop: 4, fontWeight: 600 }}>{supplier.whatsapp_number}</p>
+        )}
       </div>
 
       <Cart />

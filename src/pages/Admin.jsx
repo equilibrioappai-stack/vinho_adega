@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../supabase";
 import { C, FONT } from "../theme";
+import { parseWinesWorkbook } from "../lib/importWines";
 
 const EMPTY_FORM = { name: "", type: "Tinto", origin: "ARGENTINA", price: "", promo: "", tags: [] };
 
@@ -25,6 +26,11 @@ export default function Admin() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [saveError, setSaveError] = useState("");
+
+  const fileInputRef = useRef(null);
+  const [importPreview, setImportPreview] = useState(null); // { wines, errors }
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null); // { inserted, error }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -125,6 +131,31 @@ export default function Admin() {
     const { error } = await supabase.from("wines").delete().eq("id", wine.id);
     if (!error) setWines(w => w.filter(x => x.id !== wine.id));
     setConfirmDelete(null);
+  };
+
+  const handleFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setImportResult(null);
+    const buffer = await file.arrayBuffer();
+    const { wines: parsedWines, errors } = await parseWinesWorkbook(buffer);
+    setImportPreview({ wines: parsedWines, errors });
+  };
+
+  const confirmImport = async () => {
+    if (!importPreview || importPreview.wines.length === 0) return;
+    setImporting(true);
+    const payload = importPreview.wines.map(w => ({ ...w, supplier_id: supplier.id }));
+    const { data, error } = await supabase.from("wines").insert(payload).select();
+    setImporting(false);
+    if (error) {
+      setImportResult({ inserted: 0, error: error.message });
+      return;
+    }
+    setWines(w => [...w, ...data].sort((a, b) => a.name.localeCompare(b.name)));
+    setImportResult({ inserted: data.length, error: null });
+    setImportPreview(null);
   };
 
   const stats = {
@@ -239,6 +270,17 @@ export default function Admin() {
             onClick={openAdd}
             style={{ background: C.ink, border: "none", color: C.surface, borderRadius: 8, padding: "9px 15px", fontSize: 13.5, fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}
           >+ Novo rótulo</button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={handleFileSelected}
+            style={{ display: "none" }}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={{ background: "none", border: `1px solid ${C.line}`, color: C.inkSoft, borderRadius: 8, padding: "9px 15px", fontSize: 13.5, fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}
+          >Importar planilha</button>
         </div>
 
         {/* Lista de rótulos (mobile-first: não usa table) */}
@@ -392,6 +434,61 @@ export default function Admin() {
               >Excluir</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Preview de importação */}
+      {importPreview && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(34,31,26,0.45)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div style={{ background: C.surface, borderRadius: "14px 14px 0 0", padding: "1.5rem 1.25rem 2rem", width: "100%", maxWidth: 520, maxHeight: "85vh", overflowY: "auto" }}>
+            <p style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 6 }}>Importar planilha</p>
+            <p style={{ fontSize: 13.5, color: C.inkSoft, marginBottom: 12 }}>
+              {importPreview.wines.length} {importPreview.wines.length === 1 ? "vinho pronto" : "vinhos prontos"} pra importar
+              {importPreview.errors.length > 0 && `, ${importPreview.errors.length} linha(s) com problema (serão ignoradas)`}.
+            </p>
+
+            {importPreview.errors.length > 0 && (
+              <div style={{ background: C.bg, border: `1px solid ${C.line}`, borderRadius: 8, padding: "0.75rem 1rem", marginBottom: 12, maxHeight: 140, overflowY: "auto" }}>
+                {importPreview.errors.map((err, i) => (
+                  <p key={i} style={{ fontSize: 12, color: C.danger, marginBottom: 4 }}>{err}</p>
+                ))}
+              </div>
+            )}
+
+            {importPreview.wines.length > 0 && (
+              <div style={{ border: `1px solid ${C.line}`, borderRadius: 8, overflow: "hidden", marginBottom: "1.25rem" }}>
+                {importPreview.wines.slice(0, 8).map((w, i) => (
+                  <div key={i} style={{ padding: "8px 12px", borderBottom: i < Math.min(importPreview.wines.length, 8) - 1 ? `1px solid ${C.line}` : "none", fontSize: 13, color: C.ink, display: "flex", justifyContent: "space-between", gap: 8 }}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</span>
+                    <span style={{ color: C.inkSoft, flexShrink: 0 }}>R$ {w.price}</span>
+                  </div>
+                ))}
+                {importPreview.wines.length > 8 && (
+                  <p style={{ padding: "8px 12px", fontSize: 12, color: C.muted }}>+ {importPreview.wines.length - 8} outros...</p>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8, paddingTop: "1rem", borderTop: `1px solid ${C.line}` }}>
+              <button
+                onClick={() => setImportPreview(null)}
+                style={{ flex: 1, background: "none", border: `1px solid ${C.line}`, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", cursor: "pointer", color: C.inkSoft }}
+              >Cancelar</button>
+              <button
+                onClick={confirmImport}
+                disabled={importPreview.wines.length === 0 || importing}
+                style={{ flex: 2, background: importPreview.wines.length === 0 ? C.line : C.ink, border: "none", color: C.surface, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", fontWeight: 600, cursor: importPreview.wines.length === 0 ? "not-allowed" : "pointer" }}
+              >{importing ? "Importando..." : `Importar ${importPreview.wines.length} vinhos`}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resultado da importação */}
+      {importResult && (
+        <div style={{ position: "fixed", bottom: 20, left: 20, right: 20, maxWidth: 400, margin: "0 auto", zIndex: 200, background: importResult.error ? C.danger : C.success, color: C.surface, borderRadius: 8, padding: "12px 16px", fontSize: 13.5, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <span>{importResult.error ? `Erro ao importar: ${importResult.error}` : `${importResult.inserted} vinhos importados com sucesso.`}</span>
+          <button onClick={() => setImportResult(null)} style={{ background: "none", border: "none", color: C.surface, cursor: "pointer", fontSize: 16, flexShrink: 0 }}>✕</button>
         </div>
       )}
     </div>
