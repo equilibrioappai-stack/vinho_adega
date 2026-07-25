@@ -1,14 +1,15 @@
 -- Fase 3: cadastro de um terceiro fornecedor de teste, feito só com SQL
--- (sem tocar em código), pra confirmar que o carrinho usa o WhatsApp e a
--- saudação certos automaticamente.
+-- (sem tocar em código), pra confirmar que o carrinho usa o WhatsApp, a
+-- saudação e a cor certos automaticamente.
 --
--- Troque '<UUID_DE_UM_USUARIO_DE_TESTE>' por um auth_user_id válido
--- (crie um terceiro usuário em Authentication → Users, com Auto Confirm,
--- e cole o UUID dele aqui).
+-- auth_user_id fica NULL de propósito: para este teste (catálogo público
+-- + carrinho) não é preciso logar no /admin. Se depois quiser dar acesso
+-- ao painel pra esse fornecedor, crie um usuário em Authentication → Users
+-- e rode: update suppliers set auth_user_id = '<uuid>' where slug = 'juliana';
 
 insert into suppliers (auth_user_id, business_name, slug, whatsapp_number, cart_greeting, theme_color)
 values (
-  '<UUID_DE_UM_USUARIO_DE_TESTE>',
+  null,
   'Vinhos da Juliana',
   'juliana',
   '5511988887777',
