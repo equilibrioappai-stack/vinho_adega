@@ -3,7 +3,10 @@ import { supabase } from "../supabase";
 import { C, FONT } from "../theme";
 import { parseWinesWorkbook } from "../lib/importWines";
 
-const EMPTY_FORM = { name: "", type: "Tinto", origin: "ARGENTINA", price: "", promo: "", tags: [] };
+const EMPTY_FORM = {
+  name: "", type: "Tinto", origin: "ARGENTINA", price: "", promo: "", tags: [],
+  image_url: "", featured_from: "", featured_until: "",
+};
 
 const label = (text) => (
   <span style={{ fontSize: 11, color: C.inkSoft, textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>
@@ -26,6 +29,7 @@ export default function Admin() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [saveError, setSaveError] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const fileInputRef = useRef(null);
   const [importPreview, setImportPreview] = useState(null); // { wines, errors }
@@ -87,9 +91,28 @@ export default function Admin() {
 
   const openAdd = () => { setForm(EMPTY_FORM); setSaveError(""); setModal({ mode: "add" }); };
   const openEdit = (w) => {
-    setForm({ name: w.name, type: w.type, origin: w.origin, price: w.price, promo: w.promo ?? "", tags: w.tags || [] });
+    setForm({
+      name: w.name, type: w.type, origin: w.origin, price: w.price, promo: w.promo ?? "", tags: w.tags || [],
+      image_url: w.image_url || "", featured_from: w.featured_from || "", featured_until: w.featured_until || "",
+    });
     setSaveError("");
     setModal({ mode: "edit", id: w.id });
+  };
+
+  const uploadImage = async (file) => {
+    setUploadingImage(true);
+    setSaveError("");
+    const ext = file.name.split(".").pop();
+    const path = `${supplier.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from("wine-images").upload(path, file);
+    if (uploadErr) {
+      setUploadingImage(false);
+      setSaveError("Não foi possível enviar a imagem: " + uploadErr.message);
+      return;
+    }
+    const { data } = supabase.storage.from("wine-images").getPublicUrl(path);
+    setForm(f => ({ ...f, image_url: data.publicUrl }));
+    setUploadingImage(false);
   };
 
   const save = async () => {
@@ -100,6 +123,9 @@ export default function Admin() {
       price: parseFloat(form.price),
       promo: form.promo ? parseFloat(form.promo) : null,
       tags: form.tags,
+      image_url: form.image_url || null,
+      featured_from: form.featured_from || null,
+      featured_until: form.featured_until || null,
     };
 
     if (modal.mode === "add") {
@@ -378,6 +404,32 @@ export default function Admin() {
               <div>
                 {label("Promoção (R$)")}
                 <input style={fieldInput} type="number" value={form.promo} onChange={e => setForm(f => ({ ...f, promo: e.target.value }))} placeholder="Deixe vazio" min="0" />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              {label("Foto da garrafa")}
+              {form.image_url && (
+                <img src={form.image_url} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, border: `1px solid ${C.line}`, marginBottom: 8, display: "block" }} />
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={e => e.target.files?.[0] && uploadImage(e.target.files[0])}
+                disabled={uploadingImage}
+                style={{ fontSize: 12.5, color: C.inkSoft }}
+              />
+              {uploadingImage && <p style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Enviando...</p>}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+              <div>
+                {label("Destaque de")}
+                <input style={fieldInput} type="date" value={form.featured_from} onChange={e => setForm(f => ({ ...f, featured_from: e.target.value }))} />
+              </div>
+              <div>
+                {label("Destaque até")}
+                <input style={fieldInput} type="date" value={form.featured_until} onChange={e => setForm(f => ({ ...f, featured_until: e.target.value }))} />
               </div>
             </div>
 

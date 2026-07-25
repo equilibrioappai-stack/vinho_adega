@@ -5,9 +5,16 @@ import Cart from "./Cart";
 
 const TYPE_ICON = { Tinto: "🍷", Branco: "🥂", Rosé: "🌸", Espumante: "✨", Azeite: "🫒" };
 const CATEGORY_ORDER = ["Espumante", "Branco", "Rosé", "Tinto", "Azeite"];
+const DARK_INK = "#17140F";
 
 function slugify(text) {
   return String(text).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-");
+}
+
+function isFeaturedNow(w) {
+  if (!w.featured_from || !w.featured_until) return false;
+  const today = new Date().toISOString().slice(0, 10);
+  return w.featured_from <= today && today <= w.featured_until;
 }
 
 export default function Catalog() {
@@ -26,6 +33,8 @@ export default function Catalog() {
       ...present.filter(c => !CATEGORY_ORDER.includes(c)).sort(),
     ];
   }, [wines]);
+
+  const featured = useMemo(() => wines.filter(isFeaturedNow), [wines]);
 
   const sortFn = (a, b) => {
     if (sort === "price-asc") return (a.promo || a.price) - (b.promo || b.price);
@@ -63,7 +72,7 @@ export default function Catalog() {
     return (
       <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT, padding: SPACE.md }}>
         <div style={{ textAlign: "center", maxWidth: 360 }}>
-          <p style={{ fontFamily: FONT, fontSize: 22, fontWeight: 800, color: C.ink, marginBottom: SPACE.sm }}>Catálogo não encontrado</p>
+          <p style={{ fontSize: 22, fontWeight: 800, color: C.ink, marginBottom: SPACE.sm }}>Catálogo não encontrado</p>
           <p style={{ fontSize: 14, color: C.inkSoft }}>Confira o link recebido — este endereço não corresponde a nenhum catálogo ativo.</p>
         </div>
       </div>
@@ -74,83 +83,81 @@ export default function Catalog() {
     return (
       <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT, padding: SPACE.md }}>
         <div style={{ textAlign: "center", maxWidth: 360 }}>
-          <p style={{ fontFamily: FONT, fontSize: 22, fontWeight: 800, color: C.ink, marginBottom: SPACE.sm }}>Não foi possível carregar o catálogo</p>
+          <p style={{ fontSize: 22, fontWeight: 800, color: C.ink, marginBottom: SPACE.sm }}>Não foi possível carregar o catálogo</p>
           <p style={{ fontSize: 14, color: C.inkSoft }}>Tente novamente em instantes.</p>
         </div>
       </div>
     );
   }
 
-  const wineCard = (w) => {
+  const winePlaceholder = (w) => (
+    <div style={{
+      width: "100%", aspectRatio: "3 / 4", borderRadius: 10, background: `linear-gradient(160deg, ${DARK_INK}, ${accent})`,
+      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34,
+    }}>
+      {TYPE_ICON[w.type] || "🍾"}
+    </div>
+  );
+
+  const wineImage = (w) => (
+    w.image_url
+      ? <img src={w.image_url} alt={w.name} loading="lazy" style={{ width: "100%", aspectRatio: "3 / 4", objectFit: "cover", borderRadius: 10, display: "block" }} />
+      : winePlaceholder(w)
+  );
+
+  const wineCard = (w, compact = false) => {
     const isPromo = !!w.promo;
     const isNew = w.tags?.includes("new");
     const qtyInCart = cart[w.id] || 0;
     return (
-      <div
-        key={w.id}
-        style={{
-          display: "flex", gap: SPACE.md, alignItems: "flex-start",
-          padding: `${SPACE.lg}px 0`, borderBottom: `1px solid ${C.line}`,
-        }}
-      >
-        <div style={{ fontSize: 22, lineHeight: 1, marginTop: 3, flexShrink: 0, width: 26, textAlign: "center", opacity: 0.85 }}>
-          {TYPE_ICON[w.type] || "🍾"}
+      <div key={w.id} style={{ width: compact ? 148 : "100%", flexShrink: 0 }}>
+        <div style={{ position: "relative" }}>
+          {wineImage(w)}
+          {(isPromo || isNew) && (
+            <span style={{
+              position: "absolute", top: 8, left: 8, background: isPromo ? C.gold : C.ink, color: C.surface,
+              fontSize: 9.5, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase",
+              borderRadius: 4, padding: "3px 7px",
+            }}>
+              {isPromo ? "Promoção" : "Novidade"}
+            </span>
+          )}
         </div>
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: SPACE.sm, flexWrap: "wrap" }}>
-            <p style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>{w.name}</p>
-            {isPromo && (
-              <span style={{ fontSize: 10, letterSpacing: 0.6, color: C.gold, fontWeight: 700, textTransform: "uppercase" }}>
-                Promoção
-              </span>
-            )}
-            {isNew && !isPromo && (
-              <span style={{ fontSize: 10, letterSpacing: 0.6, color: C.inkSoft, fontWeight: 700, textTransform: "uppercase" }}>
-                Novidade
-              </span>
-            )}
-          </div>
-          <p style={{ fontSize: 12, color: C.muted, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 4, marginBottom: SPACE.md }}>
+        <div style={{ paddingTop: SPACE.sm }}>
+          <p style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginBottom: 2 }}>{w.name}</p>
+          <p style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: SPACE.sm }}>
             {w.type} · {w.origin.charAt(0) + w.origin.slice(1).toLowerCase()}
           </p>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: SPACE.sm }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: SPACE.sm }}>
-              {isPromo ? (
-                <>
-                  <span style={{ fontFamily: FONT, fontSize: 17, fontWeight: 800, color: accent }}>
-                    R$ {w.promo.toLocaleString("pt-BR")}
-                  </span>
-                  <span style={{ fontSize: 12.5, color: C.muted, textDecoration: "line-through" }}>
-                    R$ {w.price.toLocaleString("pt-BR")}
-                  </span>
-                </>
-              ) : (
-                <span style={{ fontFamily: FONT, fontSize: 17, fontWeight: 800, color: C.ink }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: SPACE.xs }}>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {isPromo && (
+                <span style={{ fontSize: 11, color: C.muted, textDecoration: "line-through" }}>
                   R$ {w.price.toLocaleString("pt-BR")}
                 </span>
               )}
+              <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: isPromo ? accent : C.ink }}>
+                R$ {(isPromo ? w.promo : w.price).toLocaleString("pt-BR")}
+              </span>
             </div>
 
             {qtyInCart === 0 ? (
               <button
                 onClick={() => addToCart(w.id)}
+                aria-label={`Adicionar ${w.name}`}
                 style={{
-                  background: C.ink, color: C.surface, border: "none",
-                  borderRadius: 6, padding: "8px 16px", fontSize: 12.5, fontWeight: 600,
-                  cursor: "pointer", fontFamily: "inherit", letterSpacing: 0.2,
-                  transition: "transform 0.15s ease, background 0.15s ease",
+                  background: C.ink, color: C.surface, border: "none", borderRadius: 6,
+                  width: 32, height: 32, fontSize: 16, cursor: "pointer", flexShrink: 0,
+                  transition: "transform 0.15s ease",
                 }}
-                onMouseDown={e => { e.currentTarget.style.transform = "scale(0.96)"; }}
+                onMouseDown={e => { e.currentTarget.style.transform = "scale(0.9)"; }}
                 onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; }}
-              >
-                Adicionar
-              </button>
+              >+</button>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: SPACE.sm }}>
+              <div style={{ display: "flex", alignItems: "center", gap: SPACE.xs }}>
                 <button onClick={() => decreaseFromCart(w.id)} style={qtyBtn}>–</button>
-                <span style={{ fontSize: 13.5, minWidth: 16, textAlign: "center", fontWeight: 600 }}>{qtyInCart}</span>
+                <span style={{ fontSize: 12.5, minWidth: 14, textAlign: "center", fontWeight: 700 }}>{qtyInCart}</span>
                 <button onClick={() => addToCart(w.id)} style={qtyBtn}>+</button>
               </div>
             )}
@@ -162,16 +169,19 @@ export default function Catalog() {
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.ink, fontFamily: FONT }}>
-      {/* Hero */}
-      <div style={{ padding: `${SPACE.xxxl}px ${SPACE.md}px ${SPACE.xxl}px`, textAlign: "center", borderBottom: `1px solid ${C.line}` }}>
-        <p style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: C.gold, marginBottom: SPACE.sm, fontWeight: 600 }}>
+      {/* Hero escuro */}
+      <div style={{
+        background: `linear-gradient(180deg, ${DARK_INK} 0%, #241F17 100%)`,
+        padding: `${SPACE.xxxl}px ${SPACE.md}px ${SPACE.xxl}px`, textAlign: "center",
+      }}>
+        <p style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "#D9B25C", marginBottom: SPACE.sm, fontWeight: 700 }}>
           Carta de vinhos
         </p>
-        <h1 style={{ fontFamily: FONT, fontSize: "clamp(30px, 8vw, 44px)", fontWeight: 800, color: C.ink, lineHeight: 1.15, marginBottom: SPACE.sm, letterSpacing: -0.5 }}>
+        <h1 style={{ fontFamily: FONT, fontSize: "clamp(30px, 8vw, 44px)", fontWeight: 800, color: "#F7F4ED", lineHeight: 1.15, marginBottom: SPACE.sm, letterSpacing: -0.5 }}>
           {supplier?.business_name}
         </h1>
         {origins.length > 0 && (
-          <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: SPACE.xl, letterSpacing: 0.3 }}>
+          <p style={{ fontSize: 13, color: "#C9C0AE", marginBottom: SPACE.xl, letterSpacing: 0.3 }}>
             {origins.map(o => o.charAt(0) + o.slice(1).toLowerCase()).join(" · ")}
           </p>
         )}
@@ -179,8 +189,8 @@ export default function Catalog() {
           <a
             href={`#cat-${slugify(categories[0])}`}
             style={{
-              display: "inline-block", background: C.ink, color: C.surface, textDecoration: "none",
-              borderRadius: 6, padding: "12px 28px", fontSize: 13.5, fontWeight: 600, letterSpacing: 0.3,
+              display: "inline-block", background: "#D9B25C", color: DARK_INK, textDecoration: "none",
+              borderRadius: 6, padding: "12px 28px", fontSize: 13.5, fontWeight: 700, letterSpacing: 0.3,
             }}
           >
             Explorar Carta
@@ -188,9 +198,21 @@ export default function Catalog() {
         )}
       </div>
 
+      {/* Destaques da semana */}
+      {featured.length > 0 && (
+        <div style={{ padding: `${SPACE.xl}px 0`, background: C.surface, borderBottom: `1px solid ${C.line}` }}>
+          <div style={{ padding: `0 ${SPACE.md}px`, marginBottom: SPACE.md }}>
+            <h2 style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: C.ink }}>⭐ Destaques da semana</h2>
+          </div>
+          <div style={{ display: "flex", gap: SPACE.md, overflowX: "auto", padding: `0 ${SPACE.md}px ${SPACE.xs}px` }}>
+            {featured.map(w => wineCard(w, true))}
+          </div>
+        </div>
+      )}
+
       {/* Navegação por categoria + busca, fixa ao rolar */}
-      <div style={{ position: "sticky", top: 0, zIndex: 30, background: C.bg, borderBottom: `1px solid ${C.line}`, backdropFilter: "blur(6px)" }}>
-        <div style={{ maxWidth: 720, margin: "0 auto", padding: `${SPACE.sm}px ${SPACE.md}px` }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 30, background: C.bg, borderBottom: `1px solid ${C.line}` }}>
+        <div style={{ maxWidth: 960, margin: "0 auto", padding: `${SPACE.sm}px ${SPACE.md}px` }}>
           <div style={{ display: "flex", gap: SPACE.sm, marginBottom: SPACE.sm }}>
             <input
               value={search}
@@ -251,8 +273,8 @@ export default function Catalog() {
         </div>
       </div>
 
-      {/* Carta */}
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: `${SPACE.sm}px ${SPACE.md}px ${SPACE.xxxl}px` }}>
+      {/* Carta em grade */}
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: `${SPACE.md}px ${SPACE.md}px ${SPACE.xxxl}px` }}>
         {isSearching ? (
           flatResults.length === 0 ? (
             <p style={{ color: C.muted, padding: `${SPACE.xxl}px 0`, textAlign: "center", fontSize: 14 }}>
@@ -260,10 +282,12 @@ export default function Catalog() {
             </p>
           ) : (
             <>
-              <p style={{ padding: `${SPACE.md}px 0 0`, fontSize: 12, color: C.muted }}>
+              <p style={{ fontSize: 12, color: C.muted, marginBottom: SPACE.md }}>
                 {flatResults.length} rótulos encontrados
               </p>
-              {flatResults.map(wineCard)}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(148px, 1fr))", gap: SPACE.lg }}>
+                {flatResults.map(w => wineCard(w))}
+              </div>
             </>
           )
         ) : grouped.length === 0 ? (
@@ -272,12 +296,14 @@ export default function Catalog() {
           </p>
         ) : (
           grouped.map(({ type, items }) => (
-            <section key={type} id={`cat-${slugify(type)}`} style={{ paddingTop: SPACE.xl, scrollMarginTop: 120 }}>
-              <h2 style={{ fontFamily: FONT, fontSize: 22, fontWeight: 800, color: C.ink, marginBottom: SPACE.xs }}>
+            <section key={type} id={`cat-${slugify(type)}`} style={{ paddingTop: SPACE.xl, scrollMarginTop: 140 }}>
+              <h2 style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: C.ink, marginBottom: SPACE.xs }}>
                 {TYPE_ICON[type] || "🍾"} {type}s
               </h2>
-              <p style={{ fontSize: 12, color: C.muted, marginBottom: SPACE.sm }}>{items.length} rótulos</p>
-              {items.map(wineCard)}
+              <p style={{ fontSize: 12, color: C.muted, marginBottom: SPACE.md }}>{items.length} rótulos</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(148px, 1fr))", gap: SPACE.lg }}>
+                {items.map(w => wineCard(w))}
+              </div>
             </section>
           ))
         )}
