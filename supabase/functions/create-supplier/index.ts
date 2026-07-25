@@ -12,9 +12,27 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const OWNER_EMAIL = "equilibrio.appai@gmail.com";
 
+// Chamado do navegador (outra origem) — sem isso o navegador bloqueia a
+// requisição antes dela sequer chegar aqui (preflight CORS).
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+function json(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+  });
+}
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: CORS_HEADERS });
+  }
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
+    return json({ error: "Method not allowed" }, 405);
   }
 
   const authHeader = req.headers.get("Authorization") || "";
@@ -26,14 +44,14 @@ Deno.serve(async (req) => {
 
   const { data: { user }, error: userErr } = await callerClient.auth.getUser();
   if (userErr || !user || user.email !== OWNER_EMAIL) {
-    return new Response(JSON.stringify({ error: "Não autorizado." }), { status: 403 });
+    return json({ error: "Não autorizado." }, 403);
   }
 
   let body;
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: "Corpo da requisição inválido." }), { status: 400 });
+    return json({ error: "Corpo da requisição inválido." }, 400);
   }
 
   const {
@@ -43,7 +61,7 @@ Deno.serve(async (req) => {
   } = body;
 
   if (!business_name || !slug || !admin_email || !admin_password || !whatsapp_number) {
-    return new Response(JSON.stringify({ error: "Campos obrigatórios faltando." }), { status: 400 });
+    return json({ error: "Campos obrigatórios faltando." }, 400);
   }
 
   const adminClient = createClient(
@@ -57,7 +75,7 @@ Deno.serve(async (req) => {
     email_confirm: true,
   });
   if (createErr) {
-    return new Response(JSON.stringify({ error: `Não foi possível criar o login: ${createErr.message}` }), { status: 400 });
+    return json({ error: `Não foi possível criar o login: ${createErr.message}` }, 400);
   }
 
   const { data: supplierRow, error: insertErr } = await adminClient
@@ -79,11 +97,8 @@ Deno.serve(async (req) => {
   if (insertErr) {
     // reverte o usuário criado pra não deixar login órfão sem fornecedor
     await adminClient.auth.admin.deleteUser(created.user.id);
-    return new Response(JSON.stringify({ error: `Não foi possível cadastrar o fornecedor: ${insertErr.message}` }), { status: 400 });
+    return json({ error: `Não foi possível cadastrar o fornecedor: ${insertErr.message}` }, 400);
   }
 
-  return new Response(JSON.stringify({ supplier: supplierRow }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+  return json({ supplier: supplierRow });
 });

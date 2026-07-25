@@ -75,24 +75,29 @@ export default function SuperAdmin() {
       return;
     }
     setSaving(true);
-    const { data: { session: current } } = await supabase.auth.getSession();
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-supplier`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${current.access_token}`,
-      },
-      body: JSON.stringify({
-        ...form,
-        billing_day: form.billing_day ? parseInt(form.billing_day, 10) : null,
-      }),
-    });
-    const body = await res.json();
-    setSaving(false);
-    if (!res.ok) { setSaveError(body.error || "Erro ao cadastrar."); return; }
-    setSuppliers(s => [...s, body.supplier].sort((a, b) => a.business_name.localeCompare(b.business_name)));
-    setForm(EMPTY_FORM);
-    setShowForm(false);
+    try {
+      const { data: { session: current } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-supplier`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${current.access_token}`,
+        },
+        body: JSON.stringify({
+          ...form,
+          billing_day: form.billing_day ? parseInt(form.billing_day, 10) : null,
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) { setSaveError(body.error || "Erro ao cadastrar."); return; }
+      setSuppliers(s => [...s, body.supplier].sort((a, b) => a.business_name.localeCompare(b.business_name)));
+      setForm(EMPTY_FORM);
+      setShowForm(false);
+    } catch {
+      setSaveError("Não foi possível falar com o servidor. Confira se a Edge Function create-supplier está publicada.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (session === undefined) {
