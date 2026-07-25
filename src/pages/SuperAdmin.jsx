@@ -77,7 +77,7 @@ export default function SuperAdmin() {
     setSaving(true);
     try {
       const { data: { session: current } } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-supplier`, {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dynamic-function`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

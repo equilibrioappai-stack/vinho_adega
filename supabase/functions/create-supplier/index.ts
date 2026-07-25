@@ -3,10 +3,16 @@
 // (equilibrio.appai@gmail.com) consegue usar isso — a checagem é feita aqui
 // no servidor, não confia em nada vindo do navegador.
 //
-// Como fazer o deploy: Supabase Dashboard → Edge Functions → New Function →
-// nome "create-supplier" → cole este arquivo → Deploy. Não precisa
-// configurar nenhum secret: SUPABASE_SERVICE_ROLE_KEY e SUPABASE_URL já
-// ficam disponíveis automaticamente pra toda Edge Function.
+// Como fazer o deploy: Supabase Dashboard → Edge Functions → New Function.
+// O nome que você der aqui precisa bater com o que está em
+// src/pages/SuperAdmin.jsx (hoje: "dynamic-function", o nome padrão que o
+// Supabase sugeriu quando essa função foi criada pelo dashboard). Não
+// precisa configurar nenhum secret: SUPABASE_SERVICE_ROLE_KEY e
+// SUPABASE_URL já ficam disponíveis automaticamente pra toda Edge Function.
+//
+// Importante: nas Settings dessa função, "Enforce JWT Verification" precisa
+// estar DESLIGADO — senão o Supabase bloqueia até o preflight CORS (OPTIONS)
+// antes do código abaixo rodar, e a checagem de dono já é feita aqui dentro.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
