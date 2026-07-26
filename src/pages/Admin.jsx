@@ -161,6 +161,31 @@ export default function Admin() {
     setSupplier(updated);
   };
 
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoError, setLogoError] = useState("");
+  const uploadLogo = async (file) => {
+    setUploadingLogo(true);
+    setLogoError("");
+    const ext = file.name.split(".").pop();
+    const path = `${supplier.id}/logo-${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from("wine-images").upload(path, file);
+    if (uploadErr) {
+      setUploadingLogo(false);
+      setLogoError("Não foi possível enviar a imagem: " + uploadErr.message);
+      return;
+    }
+    const { data } = supabase.storage.from("wine-images").getPublicUrl(path);
+    const { data: updated, error: updateErr } = await supabase
+      .from("suppliers")
+      .update({ logo_url: data.publicUrl })
+      .eq("id", supplier.id)
+      .select()
+      .single();
+    setUploadingLogo(false);
+    if (updateErr) { setLogoError("Não foi possível salvar: " + updateErr.message); return; }
+    setSupplier(updated);
+  };
+
   const save = async () => {
     if (!form.name.trim() || !form.price) return;
     setSaveError("");
@@ -384,6 +409,24 @@ export default function Admin() {
             <input type="file" accept="image/*" onChange={e => e.target.files?.[0] && uploadHeroImage(e.target.files[0])} disabled={uploadingHero} style={{ fontSize: 12, color: C.inkSoft }} />
             {uploadingHero && <p style={{ fontSize: 11.5, color: C.muted, marginTop: 4 }}>Enviando...</p>}
             {heroError && <p style={{ fontSize: 11.5, color: C.danger, marginTop: 4 }}>{heroError}</p>}
+          </div>
+        </div>
+
+        {/* Logo */}
+        <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 10, padding: "1rem", marginBottom: "1.25rem", display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+          {supplier?.logo_url ? (
+            <img src={supplier.logo_url} alt="" style={{ width: 60, height: 60, objectFit: "contain", borderRadius: 6, background: C.bg }} />
+          ) : (
+            <div style={{ width: 60, height: 60, borderRadius: 6, background: C.bg, border: `1px dashed ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: C.muted, textAlign: "center" }}>
+              Sem logo
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 2 }}>Logo (opcional)</p>
+            <p style={{ fontSize: 11.5, color: C.muted, marginBottom: 8 }}>Aparece no topo do catálogo, no lugar do nome em texto. Se não enviar, continua mostrando o nome normalmente.</p>
+            <input type="file" accept="image/*" onChange={e => e.target.files?.[0] && uploadLogo(e.target.files[0])} disabled={uploadingLogo} style={{ fontSize: 12, color: C.inkSoft }} />
+            {uploadingLogo && <p style={{ fontSize: 11.5, color: C.muted, marginTop: 4 }}>Enviando...</p>}
+            {logoError && <p style={{ fontSize: 11.5, color: C.danger, marginTop: 4 }}>{logoError}</p>}
           </div>
         </div>
 

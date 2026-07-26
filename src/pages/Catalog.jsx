@@ -188,9 +188,13 @@ export default function Catalog() {
             }
           : { background: `linear-gradient(180deg, ${DARK_INK} 0%, #241F17 100%)` }),
       }}>
-        <p style={{ fontSize: 11.5, letterSpacing: 4, textTransform: "uppercase", color: "#D9B25C", marginBottom: SPACE.md, fontWeight: 700 }}>
-          {supplier?.business_name}
-        </p>
+        {supplier?.logo_url ? (
+          <img src={supplier.logo_url} alt={supplier.business_name} style={{ height: 52, maxWidth: 200, objectFit: "contain", marginBottom: SPACE.md }} />
+        ) : (
+          <p style={{ fontSize: 11.5, letterSpacing: 4, textTransform: "uppercase", color: "#D9B25C", marginBottom: SPACE.md, fontWeight: 700 }}>
+            {supplier?.business_name}
+          </p>
+        )}
         <h1 style={{ fontFamily: FONT, fontSize: "clamp(34px, 9vw, 52px)", fontWeight: 800, color: "#F7F4ED", lineHeight: 1.1, marginBottom: SPACE.md, letterSpacing: -0.8 }}>
           Carta de Vinhos
         </h1>
