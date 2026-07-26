@@ -9,7 +9,7 @@ const inputStyle = {
   color: C.ink,
   borderRadius: 8,
   padding: "10px 12px",
-  fontSize: 14,
+  fontSize: 16,
   fontFamily: "inherit",
   outline: "none",
   marginBottom: 10,
