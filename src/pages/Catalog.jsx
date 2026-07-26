@@ -16,7 +16,7 @@ function initials(name) {
 }
 
 export default function Catalog() {
-  const { supplier, wines, status, cart } = useWines();
+  const { supplier, wines, status, cart, addToCart, decreaseFromCart } = useWines();
   const accent = supplier?.theme_color || C.accent;
   const [search, setSearch] = useState("");
   const [originFilter, setOriginFilter] = useState("all");
@@ -86,11 +86,12 @@ export default function Catalog() {
 
   const thumb = (w) => (
     w.image_url
-      ? <img src={w.image_url} alt="" loading="lazy" style={{ width: 56, height: 72, objectFit: "cover", borderRadius: 4, flexShrink: 0, background: C.surface }} />
+      ? <img src={w.image_url} alt="" loading="lazy" style={{ width: 68, height: 88, objectFit: "cover", borderRadius: 5, flexShrink: 0, background: C.surface, boxShadow: "0 2px 6px rgba(30,27,23,0.12)" }} />
       : (
         <div style={{
-          width: 56, height: 72, borderRadius: 4, flexShrink: 0, background: C.surface, border: `1px solid ${C.line}`,
-          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: C.muted, letterSpacing: 0.5,
+          width: 68, height: 88, borderRadius: 5, flexShrink: 0, border: `1px solid ${C.line}`,
+          background: `linear-gradient(160deg, ${C.surface}, ${C.accentSoft})`,
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, color: accent, letterSpacing: 0.5,
         }}>
           {initials(w.name)}
         </div>
@@ -101,6 +102,7 @@ export default function Catalog() {
     const qtyInSelection = cart[w.id] || 0;
     const meta = [w.origin && (w.origin.charAt(0) + w.origin.slice(1).toLowerCase()), w.region, w.winery].filter(Boolean).join(" · ");
     const secondary = [w.grape, w.vintage].filter(Boolean).join(" · ");
+    const stop = (fn) => (e) => { e.preventDefault(); e.stopPropagation(); fn(); };
     return (
       <Link
         key={w.id}
@@ -114,15 +116,15 @@ export default function Catalog() {
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: SPACE.sm, flexWrap: "wrap" }}>
-            <p style={{ fontFamily: FONT, fontSize: 15.5, fontWeight: 600, color: C.ink, lineHeight: 1.3 }}>{w.name}</p>
+            <p style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>{w.name}</p>
             {w.out_of_stock && (
               <span style={{ fontSize: 10, letterSpacing: 0.4, color: C.muted, textTransform: "uppercase" }}>Esgotado</span>
             )}
             {!w.out_of_stock && w.sommelier_pick && (
-              <span style={{ fontSize: 10, letterSpacing: 0.4, color: C.gold, textTransform: "uppercase" }}>Escolha do sommelier</span>
+              <span style={{ fontSize: 10, letterSpacing: 0.4, color: C.gold, fontWeight: 700, textTransform: "uppercase" }}>★ Sommelier</span>
             )}
             {!w.out_of_stock && !w.sommelier_pick && w.tags?.includes("new") && (
-              <span style={{ fontSize: 10, letterSpacing: 0.4, color: C.inkSoft, textTransform: "uppercase" }}>Novo</span>
+              <span style={{ fontSize: 10, letterSpacing: 0.4, color: C.inkSoft, fontWeight: 700, textTransform: "uppercase" }}>Novo</span>
             )}
           </div>
           {meta && <p style={{ fontSize: 12, color: C.inkSoft, marginTop: 3 }}>{meta}</p>}
@@ -134,19 +136,36 @@ export default function Catalog() {
           )}
         </div>
 
-        <div style={{ textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-          <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: w.promo ? accent : C.ink }}>
-            R$ {(w.promo || w.price).toLocaleString("pt-BR")}
-          </span>
-          {w.promo && (
-            <span style={{ fontSize: 11, color: C.muted, textDecoration: "line-through" }}>
-              R$ {w.price.toLocaleString("pt-BR")}
+        <div style={{ textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          <div>
+            <span style={{ fontFamily: FONT, fontSize: 16, fontWeight: 800, color: w.promo ? accent : C.ink }}>
+              R$ {(w.promo || w.price).toLocaleString("pt-BR")}
             </span>
+            {w.promo && (
+              <span style={{ display: "block", fontSize: 11, color: C.muted, textDecoration: "line-through" }}>
+                R$ {w.price.toLocaleString("pt-BR")}
+              </span>
+            )}
+          </div>
+
+          {!w.out_of_stock && (
+            qtyInSelection === 0 ? (
+              <button
+                onClick={stop(() => addToCart(w.id))}
+                style={{
+                  background: "transparent", border: `1px solid ${accent}`, color: accent,
+                  borderRadius: 20, padding: "4px 12px", fontSize: 11.5, fontWeight: 600,
+                  cursor: "pointer", fontFamily: "inherit",
+                }}
+              >Adicionar</button>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <button onClick={stop(() => decreaseFromCart(w.id))} style={miniStepBtn}>–</button>
+                <span style={{ fontSize: 12.5, minWidth: 12, textAlign: "center", fontWeight: 700 }}>{qtyInSelection}</span>
+                <button onClick={stop(() => addToCart(w.id))} style={miniStepBtn}>+</button>
+              </div>
+            )
           )}
-          {qtyInSelection > 0 && (
-            <span style={{ fontSize: 10.5, color: accent, fontWeight: 600 }}>{qtyInSelection} na seleção</span>
-          )}
-          <span style={{ color: C.muted, fontSize: 15 }}>›</span>
         </div>
       </Link>
     );
@@ -155,14 +174,19 @@ export default function Catalog() {
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.ink, fontFamily: FONT }}>
       {/* Hero editorial */}
-      <div style={{ padding: `${SPACE.xxxl}px ${SPACE.md}px ${SPACE.xl}px`, textAlign: "center", borderBottom: `1px solid ${C.line}` }}>
-        <p style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: C.gold, marginBottom: SPACE.md, fontWeight: 600 }}>
+      <div style={{
+        padding: `${SPACE.xxxl}px ${SPACE.md}px ${SPACE.xxl}px`, textAlign: "center",
+        background: `radial-gradient(ellipse at 50% -20%, ${C.accentSoft} 0%, ${C.bg} 65%)`,
+        borderBottom: `1px solid ${C.line}`,
+      }}>
+        <p style={{ fontSize: 11.5, letterSpacing: 4, textTransform: "uppercase", color: C.gold, marginBottom: SPACE.md, fontWeight: 700 }}>
           {supplier?.business_name}
         </p>
-        <h1 style={{ fontFamily: FONT, fontSize: "clamp(28px, 7vw, 38px)", fontWeight: 700, color: C.ink, lineHeight: 1.2, marginBottom: SPACE.sm, letterSpacing: -0.3 }}>
+        <h1 style={{ fontFamily: FONT, fontSize: "clamp(34px, 9vw, 52px)", fontWeight: 800, color: C.ink, lineHeight: 1.1, marginBottom: SPACE.md, letterSpacing: -0.8 }}>
           Carta de Vinhos
         </h1>
-        <p style={{ fontSize: 13.5, color: C.inkSoft, maxWidth: 440, margin: "0 auto" }}>
+        <div style={{ width: 48, height: 3, background: accent, margin: `0 auto ${SPACE.md}px` }} />
+        <p style={{ fontSize: 14.5, color: C.inkSoft, maxWidth: 440, margin: "0 auto" }}>
           {origins.length > 0 && `${origins.map(o => o.charAt(0) + o.slice(1).toLowerCase()).join(", ")} · `}
           {wines.length} rótulos selecionados
         </p>
@@ -234,10 +258,12 @@ export default function Catalog() {
           </p>
         ) : (
           grouped.map(({ type, items }) => (
-            <section key={type} id={`cat-${slugify(type)}`} style={{ paddingTop: SPACE.xl, scrollMarginTop: 180 }}>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-                <h2 style={{ fontFamily: FONT, fontSize: 19, fontWeight: 700, color: C.ink }}>{type}s</h2>
-                <span style={{ fontSize: 12, color: C.muted }}>{items.length} rótulos</span>
+            <section key={type} id={`cat-${slugify(type)}`} style={{ paddingTop: SPACE.xxl, scrollMarginTop: 180 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: SPACE.sm, marginBottom: 2 }}>
+                <span style={{ fontSize: 18 }}>{TYPE_ICON[type] || "🍾"}</span>
+                <h2 style={{ fontFamily: FONT, fontSize: 21, fontWeight: 800, color: C.ink }}>{type}s</h2>
+                <span style={{ flex: 1, height: 1, background: C.line, marginLeft: SPACE.sm }} />
+                <span style={{ fontSize: 12, color: C.muted, flexShrink: 0 }}>{items.length}</span>
               </div>
               {items.map(wineRow)}
             </section>
@@ -256,3 +282,9 @@ export default function Catalog() {
     </div>
   );
 }
+
+const miniStepBtn = {
+  background: C.surface, border: `1px solid ${C.line}`, color: C.ink,
+  borderRadius: 5, width: 22, height: 22, fontSize: 12, cursor: "pointer",
+  display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
+};
