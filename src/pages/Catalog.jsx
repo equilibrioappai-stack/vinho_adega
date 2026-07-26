@@ -1,8 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useWines } from "../components/WineContext";
 import { C, FONT, SPACE } from "../theme";
 import Cart from "./Cart";
+
+const DARK_INK = "#17140F";
 
 const TYPE_ICON = { Tinto: "🍷", Branco: "🥂", Rosé: "🌸", Espumante: "✨", Azeite: "🫒" };
 const CATEGORY_ORDER = ["Espumante", "Branco", "Rosé", "Tinto", "Azeite"];
@@ -16,10 +18,12 @@ function initials(name) {
 }
 
 export default function Catalog() {
-  const { supplier, wines, status, cart, addToCart, decreaseFromCart } = useWines();
+  const { supplier, wines, status, cart, addToCart, decreaseFromCart, favorites } = useWines();
   const accent = supplier?.theme_color || C.accent;
   const [search, setSearch] = useState("");
   const [originFilter, setOriginFilter] = useState("all");
+  const [viewMode, setViewMode] = useState("all"); // "all" | "favorites"
+  const searchRef = useRef(null);
 
   const origins = useMemo(() => [...new Set(wines.map(w => w.origin))].filter(Boolean).sort(), [wines]);
 
@@ -41,14 +45,15 @@ export default function Catalog() {
       || w.grape?.toLowerCase().includes(q)
       || w.vintage?.toLowerCase().includes(q);
     const matchO = originFilter === "all" || w.origin === originFilter;
-    return matchS && matchO;
+    const matchFav = viewMode === "all" || favorites.includes(w.id);
+    return matchS && matchO && matchFav;
   };
 
   const isSearching = search.trim().length > 0;
 
   const flatResults = useMemo(
     () => wines.filter(matchesFilters).sort((a, b) => a.name.localeCompare(b.name)),
-    [wines, search, originFilter]
+    [wines, search, originFilter, viewMode, favorites]
   );
 
   const grouped = useMemo(() => {
@@ -56,7 +61,7 @@ export default function Catalog() {
     return categories
       .map(cat => ({ type: cat, items: filtered.filter(w => w.type === cat).sort((a, b) => a.name.localeCompare(b.name)) }))
       .filter(g => g.items.length > 0);
-  }, [wines, categories, originFilter]);
+  }, [wines, categories, originFilter, viewMode, favorites]);
 
   if (status === "loading") {
     return <div style={{ minHeight: "100vh", background: C.bg }} />;
@@ -176,26 +181,51 @@ export default function Catalog() {
       {/* Hero editorial */}
       <div style={{
         padding: `${SPACE.xxxl}px ${SPACE.md}px ${SPACE.xxl}px`, textAlign: "center",
-        background: `radial-gradient(ellipse at 50% -20%, ${C.accentSoft} 0%, ${C.bg} 65%)`,
-        borderBottom: `1px solid ${C.line}`,
+        ...(supplier?.hero_image_url
+          ? {
+              backgroundImage: `linear-gradient(180deg, rgba(23,20,15,0.35), rgba(23,20,15,0.88)), url(${supplier.hero_image_url})`,
+              backgroundSize: "cover", backgroundPosition: "center",
+            }
+          : { background: `linear-gradient(180deg, ${DARK_INK} 0%, #241F17 100%)` }),
       }}>
-        <p style={{ fontSize: 11.5, letterSpacing: 4, textTransform: "uppercase", color: C.gold, marginBottom: SPACE.md, fontWeight: 700 }}>
+        <p style={{ fontSize: 11.5, letterSpacing: 4, textTransform: "uppercase", color: "#D9B25C", marginBottom: SPACE.md, fontWeight: 700 }}>
           {supplier?.business_name}
         </p>
-        <h1 style={{ fontFamily: FONT, fontSize: "clamp(34px, 9vw, 52px)", fontWeight: 800, color: C.ink, lineHeight: 1.1, marginBottom: SPACE.md, letterSpacing: -0.8 }}>
+        <h1 style={{ fontFamily: FONT, fontSize: "clamp(34px, 9vw, 52px)", fontWeight: 800, color: "#F7F4ED", lineHeight: 1.1, marginBottom: SPACE.md, letterSpacing: -0.8 }}>
           Carta de Vinhos
         </h1>
-        <div style={{ width: 48, height: 3, background: accent, margin: `0 auto ${SPACE.md}px` }} />
-        <p style={{ fontSize: 14.5, color: C.inkSoft, maxWidth: 440, margin: "0 auto" }}>
+        <div style={{ width: 48, height: 3, background: "#D9B25C", margin: `0 auto ${SPACE.md}px` }} />
+        <p style={{ fontSize: 14.5, color: "#D8D0C0", maxWidth: 440, margin: "0 auto", marginBottom: SPACE.xl }}>
           {origins.length > 0 && `${origins.map(o => o.charAt(0) + o.slice(1).toLowerCase()).join(", ")} · `}
           {wines.length} rótulos selecionados
         </p>
+
+        {categories.length > 1 && (
+          <div style={{ display: "flex", gap: SPACE.lg, overflowX: "auto", justifyContent: categories.length <= 5 ? "center" : "flex-start" }}>
+            {categories.map(cat => (
+              <a
+                key={cat}
+                href={`#cat-${slugify(cat)}`}
+                style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, textDecoration: "none" }}
+              >
+                <span style={{
+                  width: 46, height: 46, borderRadius: "50%", background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(217,178,92,0.4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19,
+                }}>
+                  {TYPE_ICON[cat] || "🍾"}
+                </span>
+                <span style={{ fontSize: 10.5, color: "#D8D0C0", letterSpacing: 0.3 }}>{cat}s</span>
+              </a>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Busca — o elemento mais importante da tela */}
       <div style={{ position: "sticky", top: 0, zIndex: 30, background: C.bg, borderBottom: `1px solid ${C.line}` }}>
         <div style={{ maxWidth: 640, margin: "0 auto", padding: `${SPACE.md}px` }}>
           <input
+            ref={searchRef}
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar por nome, vinícola, uva, país..."
@@ -205,20 +235,10 @@ export default function Catalog() {
             }}
           />
 
-          {!isSearching && categories.length > 1 && (
-            <div style={{ display: "flex", gap: SPACE.lg, overflowX: "auto", marginTop: SPACE.md }}>
-              {categories.map(cat => (
-                <a
-                  key={cat}
-                  href={`#cat-${slugify(cat)}`}
-                  style={{
-                    flexShrink: 0, fontSize: 12.5, fontFamily: "inherit", textDecoration: "none",
-                    color: C.inkSoft, letterSpacing: 0.3, whiteSpace: "nowrap", paddingBottom: 4,
-                  }}
-                >
-                  {cat}s
-                </a>
-              ))}
+          {viewMode === "favorites" && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: SPACE.sm }}>
+              <span style={{ fontSize: 12, color: accent, fontWeight: 600 }}>♥ Mostrando favoritos</span>
+              <button onClick={() => setViewMode("all")} style={{ background: "none", border: "none", color: C.muted, fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>Ver todos</button>
             </div>
           )}
 
@@ -272,10 +292,37 @@ export default function Catalog() {
       </div>
 
       {/* Rodapé */}
-      <div style={{ borderTop: `1px solid ${C.line}`, padding: `${SPACE.xl}px ${SPACE.md}px`, textAlign: "center" }}>
+      <div style={{ borderTop: `1px solid ${C.line}`, padding: `${SPACE.xl}px ${SPACE.md}px ${SPACE.xxxl}px`, textAlign: "center" }}>
         {supplier?.whatsapp_number && (
           <p style={{ fontSize: 13, color: C.inkSoft }}>Dúvidas ou pedidos: <span style={{ color: accent, fontWeight: 600 }}>{supplier.whatsapp_number}</span></p>
         )}
+      </div>
+
+      {/* Navegação fixa */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 45,
+        background: C.surface, borderTop: `1px solid ${C.line}`,
+        display: "flex", justifyContent: "space-around", padding: "8px 0 max(8px, env(safe-area-inset-bottom))",
+      }}>
+        {[
+          { label: "Início", icon: "⌂", onClick: () => window.scrollTo({ top: 0, behavior: "smooth" }) },
+          { label: "Categorias", icon: "☰", onClick: () => document.getElementById(`cat-${slugify(categories[0] || "")}`)?.scrollIntoView({ behavior: "smooth" }) },
+          { label: "Buscar", icon: "⌕", onClick: () => searchRef.current?.focus() },
+          { label: "Favoritos", icon: viewMode === "favorites" ? "♥" : "♡", onClick: () => setViewMode(v => v === "favorites" ? "all" : "favorites") },
+        ].map(item => (
+          <button
+            key={item.label}
+            onClick={item.onClick}
+            style={{
+              background: "none", border: "none", cursor: "pointer", fontFamily: "inherit",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+              color: item.label === "Favoritos" && viewMode === "favorites" ? accent : C.inkSoft,
+            }}
+          >
+            <span style={{ fontSize: 19 }}>{item.icon}</span>
+            <span style={{ fontSize: 9.5 }}>{item.label}</span>
+          </button>
+        ))}
       </div>
 
       <Cart />

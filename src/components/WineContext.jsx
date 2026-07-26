@@ -22,6 +22,21 @@ export function WineProvider({ children, supplierSlug }) {
     try { localStorage.setItem("adega_cart", JSON.stringify(updated)); } catch {}
   };
 
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      const stored = localStorage.getItem("adega_favorites");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const toggleFavorite = (id) => {
+    const updated = favorites.includes(id) ? favorites.filter(x => x !== id) : [...favorites, id];
+    setFavorites(updated);
+    try { localStorage.setItem("adega_favorites", JSON.stringify(updated)); } catch {}
+  };
+
   useEffect(() => {
     if (!supplierSlug) { setStatus("not_found"); return; }
     let cancelled = false;
@@ -90,6 +105,7 @@ export function WineProvider({ children, supplierSlug }) {
       supplier, wines, status,
       cart, cartItems, cartCount, cartTotal,
       addToCart, decreaseFromCart, removeFromCart, clearCart,
+      favorites, toggleFavorite,
     }}>
       {children}
     </WineContext.Provider>

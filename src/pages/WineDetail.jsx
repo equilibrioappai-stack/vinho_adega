@@ -16,7 +16,7 @@ const row = (label, value) => value ? (
 
 export default function WineDetail() {
   const { supplierSlug, wineId } = useParams();
-  const { supplier, wines, status, cart, addToCart, decreaseFromCart } = useWines();
+  const { supplier, wines, status, cart, addToCart, decreaseFromCart, favorites, toggleFavorite } = useWines();
   const accent = supplier?.theme_color || C.accent;
 
   if (status === "loading") {
@@ -47,9 +47,18 @@ export default function WineDetail() {
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.ink, fontFamily: FONT }}>
       <div style={{ maxWidth: 560, margin: "0 auto", padding: `${SPACE.md}px ${SPACE.md}px ${SPACE.xxxl}px` }}>
-        <Link to={`/catalogo/${supplierSlug}`} style={{ fontSize: 13, color: C.inkSoft, textDecoration: "none", display: "inline-block", marginBottom: SPACE.lg }}>
-          ← Voltar à carta
-        </Link>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: SPACE.lg }}>
+          <Link to={`/catalogo/${supplierSlug}`} style={{ fontSize: 13, color: C.inkSoft, textDecoration: "none" }}>
+            ← Voltar à carta
+          </Link>
+          <button
+            onClick={() => toggleFavorite(w.id)}
+            aria-label="Favoritar"
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: favorites.includes(w.id) ? accent : C.muted }}
+          >
+            {favorites.includes(w.id) ? "♥" : "♡"}
+          </button>
+        </div>
 
         <div style={{ display: "flex", gap: SPACE.lg, alignItems: "flex-start", marginBottom: SPACE.xl }}>
           {w.image_url ? (

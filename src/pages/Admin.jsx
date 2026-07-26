@@ -118,6 +118,31 @@ export default function Admin() {
     setUploadingImage(false);
   };
 
+  const [uploadingHero, setUploadingHero] = useState(false);
+  const [heroError, setHeroError] = useState("");
+  const uploadHeroImage = async (file) => {
+    setUploadingHero(true);
+    setHeroError("");
+    const ext = file.name.split(".").pop();
+    const path = `${supplier.id}/hero-${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from("wine-images").upload(path, file);
+    if (uploadErr) {
+      setUploadingHero(false);
+      setHeroError("Não foi possível enviar a imagem: " + uploadErr.message);
+      return;
+    }
+    const { data } = supabase.storage.from("wine-images").getPublicUrl(path);
+    const { data: updated, error: updateErr } = await supabase
+      .from("suppliers")
+      .update({ hero_image_url: data.publicUrl })
+      .eq("id", supplier.id)
+      .select()
+      .single();
+    setUploadingHero(false);
+    if (updateErr) { setHeroError("Não foi possível salvar: " + updateErr.message); return; }
+    setSupplier(updated);
+  };
+
   const save = async () => {
     if (!form.name.trim() || !form.price) return;
     setSaveError("");
@@ -287,6 +312,24 @@ export default function Admin() {
       </div>
 
       <div style={{ padding: "1.25rem", maxWidth: 900, margin: "0 auto" }}>
+        {/* Foto de capa */}
+        <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 10, padding: "1rem", marginBottom: "1.25rem", display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+          {supplier?.hero_image_url ? (
+            <img src={supplier.hero_image_url} alt="" style={{ width: 90, height: 60, objectFit: "cover", borderRadius: 6 }} />
+          ) : (
+            <div style={{ width: 90, height: 60, borderRadius: 6, background: C.bg, border: `1px dashed ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: C.muted, textAlign: "center" }}>
+              Sem foto
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 2 }}>Foto de capa da carta</p>
+            <p style={{ fontSize: 11.5, color: C.muted, marginBottom: 8 }}>Aparece no topo do catálogo público. Prefira fotos horizontais, bem iluminadas.</p>
+            <input type="file" accept="image/*" onChange={e => e.target.files?.[0] && uploadHeroImage(e.target.files[0])} disabled={uploadingHero} style={{ fontSize: 12, color: C.inkSoft }} />
+            {uploadingHero && <p style={{ fontSize: 11.5, color: C.muted, marginTop: 4 }}>Enviando...</p>}
+            {heroError && <p style={{ fontSize: 11.5, color: C.danger, marginTop: 4 }}>{heroError}</p>}
+          </div>
+        </div>
+
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: "1.25rem" }}>
           {[["Rótulos", stats.total], ["Em promoção", stats.promos], ["Novidades", stats.novidades]].map(([lbl, val]) => (

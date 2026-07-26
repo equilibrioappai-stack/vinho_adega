@@ -81,7 +81,7 @@ export default function Cart() {
         <button
           onClick={() => setOpen(true)}
           style={{
-            position: "fixed", bottom: 20, right: 20, zIndex: 40,
+            position: "fixed", bottom: "calc(64px + env(safe-area-inset-bottom))", right: 16, zIndex: 40,
             background: C.ink, color: C.surface, border: "none",
             borderRadius: 24, padding: "10px 16px", fontSize: 13, fontWeight: 600,
             display: "flex", alignItems: "center", gap: 8, cursor: "pointer",
