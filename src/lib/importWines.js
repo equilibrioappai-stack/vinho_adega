@@ -5,7 +5,13 @@ const HEADER_ALIASES = {
   price: ["price", "preco", "preço"],
   promo: ["promo", "promocao", "promoção"],
   tags: ["tags", "etiquetas"],
+  out_of_stock: ["esgotado", "out_of_stock", "sem estoque", "indisponivel", "indisponível"],
 };
+
+function parseBoolean(value) {
+  const v = String(value ?? "").trim().toLowerCase();
+  return ["sim", "s", "true", "1", "esgotado", "x", "yes"].includes(v);
+}
 
 function normalizeHeader(h) {
   return String(h || "").trim().toLowerCase();
@@ -66,8 +72,26 @@ export async function parseWinesWorkbook(arrayBuffer) {
       price,
       promo: headerMap.promo ? parseNumber(raw[headerMap.promo]) : null,
       tags,
+      out_of_stock: headerMap.out_of_stock ? parseBoolean(raw[headerMap.out_of_stock]) : false,
     });
   });
 
   return { wines, errors };
+}
+
+// Modelo de planilha CSV pronto pra baixar, com as colunas esperadas e
+// duas linhas de exemplo — não depende da lib xlsx, é só texto.
+export function downloadWinesTemplate() {
+  const header = "nome,tipo,origem,preco,promo,tags,esgotado";
+  const example1 = "Alamos Malbec,Tinto,ARGENTINA,70,59,promo,";
+  const example2 = "Chandon Extra Brut,Espumante,ARGENTINA,100,,,";
+  const csv = [header, example1, example2].join("\n");
+
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "modelo-catalogo.csv";
+  a.click();
+  URL.revokeObjectURL(url);
 }

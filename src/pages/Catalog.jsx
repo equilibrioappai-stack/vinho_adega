@@ -34,7 +34,7 @@ export default function Catalog() {
     ];
   }, [wines]);
 
-  const featured = useMemo(() => wines.filter(isFeaturedNow), [wines]);
+  const featured = useMemo(() => wines.filter(w => isFeaturedNow(w) && !w.out_of_stock), [wines]);
 
   const sortFn = (a, b) => {
     if (sort === "price-asc") return (a.promo || a.price) - (b.promo || b.price);
@@ -110,10 +110,18 @@ export default function Catalog() {
     const isNew = w.tags?.includes("new");
     const qtyInCart = cart[w.id] || 0;
     return (
-      <div key={w.id} style={{ width: compact ? 148 : "100%", flexShrink: 0 }}>
+      <div key={w.id} style={{ width: compact ? 148 : "100%", flexShrink: 0, opacity: w.out_of_stock ? 0.5 : 1 }}>
         <div style={{ position: "relative" }}>
           {wineImage(w)}
-          {(isPromo || isNew) && (
+          {w.out_of_stock ? (
+            <span style={{
+              position: "absolute", top: 8, left: 8, background: C.ink, color: C.surface,
+              fontSize: 9.5, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase",
+              borderRadius: 4, padding: "3px 7px",
+            }}>
+              Esgotado
+            </span>
+          ) : (isPromo || isNew) && (
             <span style={{
               position: "absolute", top: 8, left: 8, background: isPromo ? C.gold : C.ink, color: C.surface,
               fontSize: 9.5, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase",
@@ -142,7 +150,7 @@ export default function Catalog() {
               </span>
             </div>
 
-            {qtyInCart === 0 ? (
+            {w.out_of_stock ? null : qtyInCart === 0 ? (
               <button
                 onClick={() => addToCart(w.id)}
                 aria-label={`Adicionar ${w.name}`}

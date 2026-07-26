@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../supabase";
 import { C, FONT } from "../theme";
-import { parseWinesWorkbook } from "../lib/importWines";
+import { parseWinesWorkbook, downloadWinesTemplate } from "../lib/importWines";
 
 const EMPTY_FORM = {
   name: "", type: "Tinto", origin: "ARGENTINA", price: "", promo: "", tags: [],
-  image_url: "", featured_from: "", featured_until: "",
+  image_url: "", featured_from: "", featured_until: "", out_of_stock: false,
 };
 
 const label = (text) => (
@@ -94,6 +94,7 @@ export default function Admin() {
     setForm({
       name: w.name, type: w.type, origin: w.origin, price: w.price, promo: w.promo ?? "", tags: w.tags || [],
       image_url: w.image_url || "", featured_from: w.featured_from || "", featured_until: w.featured_until || "",
+      out_of_stock: w.out_of_stock || false,
     });
     setSaveError("");
     setModal({ mode: "edit", id: w.id });
@@ -126,6 +127,7 @@ export default function Admin() {
       image_url: form.image_url || null,
       featured_from: form.featured_from || null,
       featured_until: form.featured_until || null,
+      out_of_stock: form.out_of_stock,
     };
 
     if (modal.mode === "add") {
@@ -151,6 +153,16 @@ export default function Admin() {
 
   const toggleTag = (tag) => {
     setForm(f => ({ ...f, tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag] }));
+  };
+
+  const toggleStock = async (wine) => {
+    const { data, error } = await supabase
+      .from("wines")
+      .update({ out_of_stock: !wine.out_of_stock })
+      .eq("id", wine.id)
+      .select()
+      .single();
+    if (!error) setWines(w => w.map(x => x.id === wine.id ? data : x));
   };
 
   const doDelete = async (wine) => {
@@ -307,6 +319,10 @@ export default function Admin() {
             onClick={() => fileInputRef.current?.click()}
             style={{ background: "none", border: `1px solid ${C.line}`, color: C.inkSoft, borderRadius: 8, padding: "9px 15px", fontSize: 13.5, fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}
           >Importar planilha</button>
+          <button
+            onClick={downloadWinesTemplate}
+            style={{ background: "none", border: "none", color: C.inkSoft, fontSize: 12.5, fontFamily: "inherit", cursor: "pointer", textDecoration: "underline" }}
+          >Baixar modelo</button>
         </div>
 
         {/* Lista de rótulos (mobile-first: não usa table) */}
@@ -326,11 +342,12 @@ export default function Admin() {
               key={w.id}
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 90px 90px 80px 80px 64px",
+                gridTemplateColumns: "1fr 90px 90px 80px 80px 92px",
                 gap: 0,
                 padding: "10px 14px",
                 borderBottom: i < filtered.length - 1 ? `1px solid ${C.line}` : "none",
                 alignItems: "center",
+                opacity: w.out_of_stock ? 0.55 : 1,
               }}
             >
               <div style={{ overflow: "hidden" }}>
@@ -338,6 +355,9 @@ export default function Admin() {
                   {w.name}
                 </p>
                 <div style={{ display: "flex", gap: 5, marginTop: 3 }}>
+                  {w.out_of_stock && (
+                    <span style={{ fontSize: 9.5, color: C.danger, fontWeight: 700, textTransform: "uppercase" }}>Esgotado</span>
+                  )}
                   {w.tags?.includes("new") && (
                     <span style={{ fontSize: 9.5, color: C.inkSoft, fontWeight: 700, textTransform: "uppercase" }}>Novidade</span>
                   )}
@@ -353,6 +373,11 @@ export default function Admin() {
                 {w.promo ? `R$ ${w.promo}` : "—"}
               </span>
               <div style={{ display: "flex", gap: 5 }}>
+                <button
+                  onClick={() => toggleStock(w)}
+                  style={{ background: "none", border: `1px solid ${w.out_of_stock ? C.danger : C.line}`, borderRadius: 6, width: 28, height: 28, cursor: "pointer", fontSize: 12, color: w.out_of_stock ? C.danger : C.inkSoft }}
+                  title={w.out_of_stock ? "Marcar disponível" : "Marcar esgotado"}
+                >🚫</button>
                 <button
                   onClick={() => openEdit(w)}
                   style={{ background: "none", border: `1px solid ${C.line}`, borderRadius: 6, width: 28, height: 28, cursor: "pointer", fontSize: 12, color: C.inkSoft }}
@@ -431,6 +456,18 @@ export default function Admin() {
                 {label("Destaque até")}
                 <input style={fieldInput} type="date" value={form.featured_until} onChange={e => setForm(f => ({ ...f, featured_until: e.target.value }))} />
               </div>
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={form.out_of_stock}
+                  onChange={e => setForm(f => ({ ...f, out_of_stock: e.target.checked }))}
+                  style={{ width: 16, height: 16 }}
+                />
+                <span style={{ fontSize: 13.5, color: C.ink }}>Esgotado (esconde o botão de adicionar no catálogo)</span>
+              </label>
             </div>
 
             <div style={{ marginBottom: "1.25rem" }}>
