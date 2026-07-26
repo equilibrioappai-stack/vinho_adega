@@ -31,10 +31,35 @@ export function WineProvider({ children, supplierSlug }) {
     }
   });
 
+  const [customerPhone, setCustomerPhoneState] = useState(() => {
+    try { return localStorage.getItem("adega_customer_phone") || ""; } catch { return ""; }
+  });
+
+  const setCustomerPhone = async (phone) => {
+    setCustomerPhoneState(phone);
+    try { localStorage.setItem("adega_customer_phone", phone); } catch {}
+    if (supplier && favorites.length > 0) {
+      await supabase.from("customer_favorites")
+        .upsert(favorites.map(wine_id => ({ supplier_id: supplier.id, phone, wine_id })), { onConflict: "supplier_id,phone,wine_id" });
+    }
+  };
+
   const toggleFavorite = (id) => {
-    const updated = favorites.includes(id) ? favorites.filter(x => x !== id) : [...favorites, id];
+    const isFav = favorites.includes(id);
+    const updated = isFav ? favorites.filter(x => x !== id) : [...favorites, id];
     setFavorites(updated);
     try { localStorage.setItem("adega_favorites", JSON.stringify(updated)); } catch {}
+
+    if (supplier && customerPhone) {
+      if (isFav) {
+        supabase.from("customer_favorites").delete().match({ supplier_id: supplier.id, phone: customerPhone, wine_id: id });
+      } else {
+        supabase.from("customer_favorites").upsert(
+          { supplier_id: supplier.id, phone: customerPhone, wine_id: id },
+          { onConflict: "supplier_id,phone,wine_id" }
+        );
+      }
+    }
   };
 
   useEffect(() => {
@@ -105,7 +130,7 @@ export function WineProvider({ children, supplierSlug }) {
       supplier, wines, status,
       cart, cartItems, cartCount, cartTotal,
       addToCart, decreaseFromCart, removeFromCart, clearCart,
-      favorites, toggleFavorite,
+      favorites, toggleFavorite, customerPhone, setCustomerPhone,
     }}>
       {children}
     </WineContext.Provider>

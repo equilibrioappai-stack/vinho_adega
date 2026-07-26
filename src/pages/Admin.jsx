@@ -37,6 +37,10 @@ export default function Admin() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null); // { inserted, error }
 
+  const [tab, setTab] = useState("catalogo"); // "catalogo" | "clientes"
+  const [customers, setCustomers] = useState([]);
+  const [customersError, setCustomersError] = useState("");
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
@@ -68,11 +72,25 @@ export default function Admin() {
       return;
     }
     setWines(wineRows || []);
+
+    const { data: favRows, error: favErr } = await supabase
+      .from("customer_favorites")
+      .select("phone, created_at, wines(name)")
+      .eq("supplier_id", supplierRow.id)
+      .order("created_at", { ascending: false });
+
+    if (favErr) { setCustomersError("Não foi possível carregar os clientes."); return; }
+    const byPhone = new Map();
+    (favRows || []).forEach(row => {
+      if (!byPhone.has(row.phone)) byPhone.set(row.phone, { phone: row.phone, lastActivity: row.created_at, wineNames: [] });
+      byPhone.get(row.phone).wineNames.push(row.wines?.name || "vinho removido");
+    });
+    setCustomers([...byPhone.values()]);
   }, []);
 
   useEffect(() => {
     if (session) loadSupplierAndWines(session.user.id);
-    else { setSupplier(null); setWines([]); }
+    else { setSupplier(null); setWines([]); setCustomers([]); }
   }, [session, loadSupplierAndWines]);
 
   const login = async () => {
@@ -311,6 +329,45 @@ export default function Admin() {
         >Sair</button>
       </div>
 
+      {/* Abas */}
+      <div style={{ background: C.surface, borderBottom: `1px solid ${C.line}`, padding: "0 1.25rem", display: "flex", gap: 4, maxWidth: 900, margin: "0 auto" }}>
+        {[["catalogo", "Catálogo"], ["clientes", `Clientes (${customers.length})`]].map(([key, lbl]) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            style={{
+              background: "none", border: "none", borderBottom: `2px solid ${tab === key ? C.ink : "transparent"}`,
+              color: tab === key ? C.ink : C.muted, fontWeight: tab === key ? 700 : 400,
+              padding: "10px 4px", fontSize: 13, fontFamily: "inherit", cursor: "pointer", marginRight: 20,
+            }}
+          >{lbl}</button>
+        ))}
+      </div>
+
+      {tab === "clientes" ? (
+        <div style={{ padding: "1.25rem", maxWidth: 900, margin: "0 auto" }}>
+          {customersError && <p style={{ fontSize: 13, color: C.danger, marginBottom: 12 }}>{customersError}</p>}
+          {customers.length === 0 ? (
+            <p style={{ color: C.muted, fontSize: 13.5, padding: "2rem", textAlign: "center" }}>
+              Nenhum cliente favoritou vinhos ainda.
+            </p>
+          ) : (
+            <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 10, overflow: "hidden" }}>
+              {customers.map((c, i) => (
+                <div key={c.phone} style={{ padding: "12px 16px", borderBottom: i < customers.length - 1 ? `1px solid ${C.line}` : "none" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                    <a href={`https://wa.me/${c.phone}`} target="_blank" rel="noreferrer" style={{ fontSize: 14, fontWeight: 600, color: C.ink, textDecoration: "none" }}>
+                      {c.phone}
+                    </a>
+                    <span style={{ fontSize: 11, color: C.muted }}>{new Date(c.lastActivity).toLocaleDateString("pt-BR")}</span>
+                  </div>
+                  <p style={{ fontSize: 12.5, color: C.inkSoft }}>♥ {c.wineNames.join(", ")}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
       <div style={{ padding: "1.25rem", maxWidth: 900, margin: "0 auto" }}>
         {/* Foto de capa */}
         <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 10, padding: "1rem", marginBottom: "1.25rem", display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
@@ -354,7 +411,7 @@ export default function Admin() {
             style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 8, padding: "9px 10px", fontSize: 13, fontFamily: "inherit", color: C.ink }}
           >
             <option value="all">Todos os tipos</option>
-            {["Tinto","Branco","Rosé","Espumante","Azeite"].map(t => <option key={t} value={t}>{t}</option>)}
+            {[...new Set(wines.map(w => w.type))].filter(Boolean).sort().map(t => <option key={t} value={t}>{t}</option>)}
           </select>
           <button
             onClick={openAdd}
@@ -445,6 +502,7 @@ export default function Admin() {
           ))}
         </div>
       </div>
+      )}
 
       {/* Modal add/edit */}
       {modal && (
@@ -462,17 +520,25 @@ export default function Admin() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
               <div>
                 {label("Tipo")}
-                <select style={fieldInput} value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-                  {["Tinto","Branco","Rosé","Espumante","Azeite"].map(t => <option key={t}>{t}</option>)}
-                </select>
+                <input
+                  style={fieldInput} list="type-options" value={form.type}
+                  onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                  placeholder="Ex: Tinto, Cerveja, Whisky..."
+                />
+                <datalist id="type-options">
+                  {[...new Set(["Tinto", "Branco", "Rosé", "Espumante", "Azeite", ...wines.map(w => w.type)])].filter(Boolean).map(t => <option key={t} value={t} />)}
+                </datalist>
               </div>
               <div>
                 {label("Origem")}
-                <select style={fieldInput} value={form.origin} onChange={e => setForm(f => ({ ...f, origin: e.target.value }))}>
-                  <option value="ARGENTINA">Argentina</option>
-                  <option value="CHILE">Chile</option>
-                  <option value="PORTUGAL">Portugal</option>
-                </select>
+                <input
+                  style={fieldInput} list="origin-options" value={form.origin}
+                  onChange={e => setForm(f => ({ ...f, origin: e.target.value.toUpperCase() }))}
+                  placeholder="Ex: Argentina, França..."
+                />
+                <datalist id="origin-options">
+                  {[...new Set(["ARGENTINA", "CHILE", "PORTUGAL", "BRASIL", ...wines.map(w => w.origin)])].filter(Boolean).map(o => <option key={o} value={o} />)}
+                </datalist>
               </div>
               <div>
                 {label("Preço (R$)")}

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useWines } from "../components/WineContext";
 import { C, FONT, SPACE } from "../theme";
@@ -16,8 +17,10 @@ const row = (label, value) => value ? (
 
 export default function WineDetail() {
   const { supplierSlug, wineId } = useParams();
-  const { supplier, wines, status, cart, addToCart, decreaseFromCart, favorites, toggleFavorite } = useWines();
+  const { supplier, wines, status, cart, addToCart, decreaseFromCart, favorites, toggleFavorite, customerPhone, setCustomerPhone } = useWines();
   const accent = supplier?.theme_color || C.accent;
+  const [showPhonePrompt, setShowPhonePrompt] = useState(false);
+  const [phoneInput, setPhoneInput] = useState("");
 
   if (status === "loading") {
     return <div style={{ minHeight: "100vh", background: C.bg }} />;
@@ -44,6 +47,20 @@ export default function WineDetail() {
 
   const qtyInSelection = cart[w.id] || 0;
 
+  const handleHeartClick = () => {
+    if (favorites.includes(w.id)) { toggleFavorite(w.id); return; }
+    if (!customerPhone) { setShowPhonePrompt(true); return; }
+    toggleFavorite(w.id);
+  };
+
+  const confirmPhone = () => {
+    const digits = phoneInput.replace(/\D/g, "");
+    if (digits.length < 10) return;
+    setCustomerPhone(digits);
+    setShowPhonePrompt(false);
+    toggleFavorite(w.id);
+  };
+
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.ink, fontFamily: FONT }}>
       <div style={{ maxWidth: 560, margin: "0 auto", padding: `${SPACE.md}px ${SPACE.md}px ${SPACE.xxxl}px` }}>
@@ -52,13 +69,32 @@ export default function WineDetail() {
             ← Voltar à carta
           </Link>
           <button
-            onClick={() => toggleFavorite(w.id)}
+            onClick={handleHeartClick}
             aria-label="Favoritar"
             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: favorites.includes(w.id) ? accent : C.muted }}
           >
             {favorites.includes(w.id) ? "♥" : "♡"}
           </button>
         </div>
+
+        {showPhonePrompt && (
+          <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 10, padding: "1rem", marginBottom: SPACE.lg }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 4 }}>Só um telefone pra salvar seus favoritos</p>
+            <p style={{ fontSize: 12, color: C.muted, marginBottom: 10 }}>Sem senha, sem cadastro — é só pra você achar sua seleção depois.</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                value={phoneInput}
+                onChange={e => setPhoneInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && confirmPhone()}
+                placeholder="(41) 99999-9999"
+                style={{ flex: 1, background: C.bg, border: `1px solid ${C.line}`, borderRadius: 6, padding: "10px 12px", fontSize: 16, fontFamily: "inherit", color: C.ink, outline: "none" }}
+              />
+              <button onClick={confirmPhone} style={{ background: C.ink, color: C.surface, border: "none", borderRadius: 6, padding: "0 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                Salvar
+              </button>
+            </div>
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: SPACE.lg, alignItems: "flex-start", marginBottom: SPACE.xl }}>
           {w.image_url ? (
