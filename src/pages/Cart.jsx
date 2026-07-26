@@ -76,25 +76,25 @@ export default function Cart() {
 
   return (
     <>
-      {/* Botão flutuante */}
-      <button
-        onClick={() => setOpen(true)}
-        style={{
-          position: "fixed", bottom: 20, right: 20, zIndex: 40,
-          background: C.ink, color: C.surface, border: "none",
-          borderRadius: 28, padding: "12px 18px", fontSize: 14, fontWeight: 600,
-          display: "flex", alignItems: "center", gap: 8, cursor: "pointer",
-          boxShadow: "0 4px 14px rgba(34,31,26,0.25)", fontFamily: "inherit",
-        }}
-      >
-        🛒 Carrinho
-        {cartCount > 0 && (
+      {/* Botão discreto, só aparece com algo selecionado */}
+      {cartCount > 0 && (
+        <button
+          onClick={() => setOpen(true)}
+          style={{
+            position: "fixed", bottom: 20, right: 20, zIndex: 40,
+            background: C.ink, color: C.surface, border: "none",
+            borderRadius: 24, padding: "10px 16px", fontSize: 13, fontWeight: 600,
+            display: "flex", alignItems: "center", gap: 8, cursor: "pointer",
+            boxShadow: "0 4px 14px rgba(34,31,26,0.25)", fontFamily: "inherit", letterSpacing: 0.2,
+          }}
+        >
+          Minha seleção
           <span style={{
-            background: C.accent, color: C.surface, borderRadius: 999,
+            background: "rgba(255,255,255,0.2)", color: C.surface, borderRadius: 999,
             fontSize: 11, fontWeight: 700, padding: "2px 7px", minWidth: 18, textAlign: "center",
           }}>{cartCount}</span>
-        )}
-      </button>
+        </button>
+      )}
 
       {open && (
         <div
@@ -114,7 +114,7 @@ export default function Cart() {
           >
             <div style={{ padding: "1.25rem 1.25rem", borderBottom: `1px solid ${C.line}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ fontFamily: FONT, fontSize: 18, fontWeight: 700, margin: 0 }}>
-                {step === "review" ? "Seu pedido" : "Dados de entrega"}
+                {step === "review" ? "Sua seleção" : "Dados de entrega"}
               </h2>
               <button onClick={handleClose} style={{ background: "none", border: "none", color: C.inkSoft, fontSize: 20, cursor: "pointer" }}>✕</button>
             </div>
@@ -178,7 +178,7 @@ export default function Cart() {
                     cursor: cartItems.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit",
                   }}
                 >
-                  Finalizar pedido
+                  Continuar
                 </button>
               ) : (
                 <div style={{ display: "flex", gap: 8 }}>

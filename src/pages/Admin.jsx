@@ -5,7 +5,8 @@ import { parseWinesWorkbook, downloadWinesTemplate } from "../lib/importWines";
 
 const EMPTY_FORM = {
   name: "", type: "Tinto", origin: "ARGENTINA", price: "", promo: "", tags: [],
-  image_url: "", featured_from: "", featured_until: "", out_of_stock: false,
+  image_url: "", out_of_stock: false, sommelier_pick: false,
+  winery: "", region: "", grape: "", vintage: "", abv: "", food_pairing: "", serving_temp: "", description: "",
 };
 
 const label = (text) => (
@@ -93,8 +94,9 @@ export default function Admin() {
   const openEdit = (w) => {
     setForm({
       name: w.name, type: w.type, origin: w.origin, price: w.price, promo: w.promo ?? "", tags: w.tags || [],
-      image_url: w.image_url || "", featured_from: w.featured_from || "", featured_until: w.featured_until || "",
-      out_of_stock: w.out_of_stock || false,
+      image_url: w.image_url || "", out_of_stock: w.out_of_stock || false, sommelier_pick: w.sommelier_pick || false,
+      winery: w.winery || "", region: w.region || "", grape: w.grape || "", vintage: w.vintage || "",
+      abv: w.abv || "", food_pairing: w.food_pairing || "", serving_temp: w.serving_temp || "", description: w.description || "",
     });
     setSaveError("");
     setModal({ mode: "edit", id: w.id });
@@ -125,9 +127,16 @@ export default function Admin() {
       promo: form.promo ? parseFloat(form.promo) : null,
       tags: form.tags,
       image_url: form.image_url || null,
-      featured_from: form.featured_from || null,
-      featured_until: form.featured_until || null,
       out_of_stock: form.out_of_stock,
+      sommelier_pick: form.sommelier_pick,
+      winery: form.winery || null,
+      region: form.region || null,
+      grape: form.grape || null,
+      vintage: form.vintage || null,
+      abv: form.abv || null,
+      food_pairing: form.food_pairing || null,
+      serving_temp: form.serving_temp || null,
+      description: form.description || null,
     };
 
     if (modal.mode === "add") {
@@ -447,18 +456,7 @@ export default function Admin() {
               {uploadingImage && <p style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Enviando...</p>}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-              <div>
-                {label("Destaque de")}
-                <input style={fieldInput} type="date" value={form.featured_from} onChange={e => setForm(f => ({ ...f, featured_from: e.target.value }))} />
-              </div>
-              <div>
-                {label("Destaque até")}
-                <input style={fieldInput} type="date" value={form.featured_until} onChange={e => setForm(f => ({ ...f, featured_until: e.target.value }))} />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: 20, marginBottom: 12 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                 <input
                   type="checkbox"
@@ -466,9 +464,47 @@ export default function Admin() {
                   onChange={e => setForm(f => ({ ...f, out_of_stock: e.target.checked }))}
                   style={{ width: 16, height: 16 }}
                 />
-                <span style={{ fontSize: 13.5, color: C.ink }}>Esgotado (esconde o botão de adicionar no catálogo)</span>
+                <span style={{ fontSize: 13.5, color: C.ink }}>Esgotado</span>
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={form.sommelier_pick}
+                  onChange={e => setForm(f => ({ ...f, sommelier_pick: e.target.checked }))}
+                  style={{ width: 16, height: 16 }}
+                />
+                <span style={{ fontSize: 13.5, color: C.ink }}>Escolha do sommelier</span>
               </label>
             </div>
+
+            <details style={{ marginBottom: "1.25rem", border: `1px solid ${C.line}`, borderRadius: 8, padding: "10px 12px" }}>
+              <summary style={{ fontSize: 12.5, color: C.inkSoft, cursor: "pointer", fontWeight: 600 }}>
+                Ficha técnica (opcional)
+              </summary>
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                  <div>{label("Vinícola")}<input style={fieldInput} value={form.winery} onChange={e => setForm(f => ({ ...f, winery: e.target.value }))} /></div>
+                  <div>{label("Região")}<input style={fieldInput} value={form.region} onChange={e => setForm(f => ({ ...f, region: e.target.value }))} /></div>
+                  <div>{label("Uva")}<input style={fieldInput} value={form.grape} onChange={e => setForm(f => ({ ...f, grape: e.target.value }))} placeholder="Ex: Malbec" /></div>
+                  <div>{label("Safra")}<input style={fieldInput} value={form.vintage} onChange={e => setForm(f => ({ ...f, vintage: e.target.value }))} placeholder="Ex: 2021" /></div>
+                  <div>{label("Teor alcoólico")}<input style={fieldInput} value={form.abv} onChange={e => setForm(f => ({ ...f, abv: e.target.value }))} placeholder="Ex: 13,5%" /></div>
+                  <div>{label("Temperatura de serviço")}<input style={fieldInput} value={form.serving_temp} onChange={e => setForm(f => ({ ...f, serving_temp: e.target.value }))} placeholder="Ex: 16-18°C" /></div>
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  {label("Harmonização")}
+                  <input style={fieldInput} value={form.food_pairing} onChange={e => setForm(f => ({ ...f, food_pairing: e.target.value }))} placeholder="Ex: Carnes vermelhas, queijos maturados" />
+                </div>
+                <div>
+                  {label("Descrição")}
+                  <textarea
+                    value={form.description}
+                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                    rows={3}
+                    style={{ ...fieldInput, resize: "vertical" }}
+                  />
+                </div>
+              </div>
+            </details>
 
             <div style={{ marginBottom: "1.25rem" }}>
               {label("Tags")}

@@ -6,6 +6,14 @@ const HEADER_ALIASES = {
   promo: ["promo", "promocao", "promoção"],
   tags: ["tags", "etiquetas"],
   out_of_stock: ["esgotado", "out_of_stock", "sem estoque", "indisponivel", "indisponível"],
+  winery: ["winery", "vinicola", "vinícola"],
+  region: ["region", "regiao", "região"],
+  grape: ["grape", "uva", "uvas"],
+  vintage: ["vintage", "safra"],
+  abv: ["abv", "teor alcoolico", "teor alcoólico"],
+  food_pairing: ["food_pairing", "harmonizacao", "harmonização"],
+  serving_temp: ["serving_temp", "temperatura", "temperatura de servico", "temperatura de serviço"],
+  description: ["description", "descricao", "descrição"],
 };
 
 function parseBoolean(value) {
@@ -21,6 +29,10 @@ function parseNumber(value) {
   if (value === undefined || value === null || value === "") return null;
   const n = parseFloat(String(value).replace(",", "."));
   return Number.isNaN(n) ? null : n;
+}
+
+function text(raw, headerMap, field) {
+  return headerMap[field] ? String(raw[headerMap[field]] ?? "").trim() || null : null;
 }
 
 // Lê um arquivo .csv ou .xlsx (ArrayBuffer) e devolve { wines, errors }.
@@ -73,6 +85,14 @@ export async function parseWinesWorkbook(arrayBuffer) {
       promo: headerMap.promo ? parseNumber(raw[headerMap.promo]) : null,
       tags,
       out_of_stock: headerMap.out_of_stock ? parseBoolean(raw[headerMap.out_of_stock]) : false,
+      winery: text(raw, headerMap, "winery"),
+      region: text(raw, headerMap, "region"),
+      grape: text(raw, headerMap, "grape"),
+      vintage: text(raw, headerMap, "vintage"),
+      abv: text(raw, headerMap, "abv"),
+      food_pairing: text(raw, headerMap, "food_pairing"),
+      serving_temp: text(raw, headerMap, "serving_temp"),
+      description: text(raw, headerMap, "description"),
     });
   });
 
@@ -82,9 +102,9 @@ export async function parseWinesWorkbook(arrayBuffer) {
 // Modelo de planilha CSV pronto pra baixar, com as colunas esperadas e
 // duas linhas de exemplo — não depende da lib xlsx, é só texto.
 export function downloadWinesTemplate() {
-  const header = "nome,tipo,origem,preco,promo,tags,esgotado";
-  const example1 = "Alamos Malbec,Tinto,ARGENTINA,70,59,promo,";
-  const example2 = "Chandon Extra Brut,Espumante,ARGENTINA,100,,,";
+  const header = "nome,tipo,origem,preco,promo,tags,esgotado,vinicola,regiao,uva,safra,teor_alcoolico,harmonizacao,temperatura,descricao";
+  const example1 = 'Alamos Malbec,Tinto,ARGENTINA,70,59,promo,,Alamos,Mendoza,Malbec,2021,13.5%,"Carnes vermelhas, queijos maturados",16-18°C,"Encorpado e frutado, com taninos macios."';
+  const example2 = "Chandon Extra Brut,Espumante,ARGENTINA,100,,,,,,,,,,,";
   const csv = [header, example1, example2].join("\n");
 
   const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
