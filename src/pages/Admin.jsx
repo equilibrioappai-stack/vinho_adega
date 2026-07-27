@@ -5,7 +5,8 @@ import { parseWinesWorkbook, downloadWinesTemplate } from "../lib/importWines";
 
 const EMPTY_FORM = {
   name: "", type: "Tinto", origin: "ARGENTINA", price: "", promo: "", tags: [],
-  image_url: "", featured_from: "", featured_until: "", out_of_stock: false,
+  image_url: "", out_of_stock: false, sommelier_pick: false,
+  winery: "", region: "", grape: "", vintage: "", abv: "", food_pairing: "", serving_temp: "", description: "",
 };
 
 const label = (text) => (
@@ -35,6 +36,10 @@ export default function Admin() {
   const [importPreview, setImportPreview] = useState(null); // { wines, errors }
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null); // { inserted, error }
+
+  const [tab, setTab] = useState("catalogo"); // "catalogo" | "clientes"
+  const [customers, setCustomers] = useState([]);
+  const [customersError, setCustomersError] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -67,11 +72,25 @@ export default function Admin() {
       return;
     }
     setWines(wineRows || []);
+
+    const { data: favRows, error: favErr } = await supabase
+      .from("customer_favorites")
+      .select("phone, created_at, wines(name)")
+      .eq("supplier_id", supplierRow.id)
+      .order("created_at", { ascending: false });
+
+    if (favErr) { setCustomersError("Não foi possível carregar os clientes."); return; }
+    const byPhone = new Map();
+    (favRows || []).forEach(row => {
+      if (!byPhone.has(row.phone)) byPhone.set(row.phone, { phone: row.phone, lastActivity: row.created_at, wineNames: [] });
+      byPhone.get(row.phone).wineNames.push(row.wines?.name || "vinho removido");
+    });
+    setCustomers([...byPhone.values()]);
   }, []);
 
   useEffect(() => {
     if (session) loadSupplierAndWines(session.user.id);
-    else { setSupplier(null); setWines([]); }
+    else { setSupplier(null); setWines([]); setCustomers([]); }
   }, [session, loadSupplierAndWines]);
 
   const login = async () => {
@@ -93,8 +112,9 @@ export default function Admin() {
   const openEdit = (w) => {
     setForm({
       name: w.name, type: w.type, origin: w.origin, price: w.price, promo: w.promo ?? "", tags: w.tags || [],
-      image_url: w.image_url || "", featured_from: w.featured_from || "", featured_until: w.featured_until || "",
-      out_of_stock: w.out_of_stock || false,
+      image_url: w.image_url || "", out_of_stock: w.out_of_stock || false, sommelier_pick: w.sommelier_pick || false,
+      winery: w.winery || "", region: w.region || "", grape: w.grape || "", vintage: w.vintage || "",
+      abv: w.abv || "", food_pairing: w.food_pairing || "", serving_temp: w.serving_temp || "", description: w.description || "",
     });
     setSaveError("");
     setModal({ mode: "edit", id: w.id });
@@ -116,6 +136,56 @@ export default function Admin() {
     setUploadingImage(false);
   };
 
+  const [uploadingHero, setUploadingHero] = useState(false);
+  const [heroError, setHeroError] = useState("");
+  const uploadHeroImage = async (file) => {
+    setUploadingHero(true);
+    setHeroError("");
+    const ext = file.name.split(".").pop();
+    const path = `${supplier.id}/hero-${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from("wine-images").upload(path, file);
+    if (uploadErr) {
+      setUploadingHero(false);
+      setHeroError("Não foi possível enviar a imagem: " + uploadErr.message);
+      return;
+    }
+    const { data } = supabase.storage.from("wine-images").getPublicUrl(path);
+    const { data: updated, error: updateErr } = await supabase
+      .from("suppliers")
+      .update({ hero_image_url: data.publicUrl })
+      .eq("id", supplier.id)
+      .select()
+      .single();
+    setUploadingHero(false);
+    if (updateErr) { setHeroError("Não foi possível salvar: " + updateErr.message); return; }
+    setSupplier(updated);
+  };
+
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoError, setLogoError] = useState("");
+  const uploadLogo = async (file) => {
+    setUploadingLogo(true);
+    setLogoError("");
+    const ext = file.name.split(".").pop();
+    const path = `${supplier.id}/logo-${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from("wine-images").upload(path, file);
+    if (uploadErr) {
+      setUploadingLogo(false);
+      setLogoError("Não foi possível enviar a imagem: " + uploadErr.message);
+      return;
+    }
+    const { data } = supabase.storage.from("wine-images").getPublicUrl(path);
+    const { data: updated, error: updateErr } = await supabase
+      .from("suppliers")
+      .update({ logo_url: data.publicUrl })
+      .eq("id", supplier.id)
+      .select()
+      .single();
+    setUploadingLogo(false);
+    if (updateErr) { setLogoError("Não foi possível salvar: " + updateErr.message); return; }
+    setSupplier(updated);
+  };
+
   const save = async () => {
     if (!form.name.trim() || !form.price) return;
     setSaveError("");
@@ -125,9 +195,16 @@ export default function Admin() {
       promo: form.promo ? parseFloat(form.promo) : null,
       tags: form.tags,
       image_url: form.image_url || null,
-      featured_from: form.featured_from || null,
-      featured_until: form.featured_until || null,
       out_of_stock: form.out_of_stock,
+      sommelier_pick: form.sommelier_pick,
+      winery: form.winery || null,
+      region: form.region || null,
+      grape: form.grape || null,
+      vintage: form.vintage || null,
+      abv: form.abv || null,
+      food_pairing: form.food_pairing || null,
+      serving_temp: form.serving_temp || null,
+      description: form.description || null,
     };
 
     if (modal.mode === "add") {
@@ -277,7 +354,82 @@ export default function Admin() {
         >Sair</button>
       </div>
 
+      {/* Abas */}
+      <div style={{ background: C.surface, borderBottom: `1px solid ${C.line}`, padding: "0 1.25rem", display: "flex", gap: 4, maxWidth: 900, margin: "0 auto" }}>
+        {[["catalogo", "Catálogo"], ["clientes", `Clientes (${customers.length})`]].map(([key, lbl]) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            style={{
+              background: "none", border: "none", borderBottom: `2px solid ${tab === key ? C.ink : "transparent"}`,
+              color: tab === key ? C.ink : C.muted, fontWeight: tab === key ? 700 : 400,
+              padding: "10px 4px", fontSize: 13, fontFamily: "inherit", cursor: "pointer", marginRight: 20,
+            }}
+          >{lbl}</button>
+        ))}
+      </div>
+
+      {tab === "clientes" ? (
+        <div style={{ padding: "1.25rem", maxWidth: 900, margin: "0 auto" }}>
+          {customersError && <p style={{ fontSize: 13, color: C.danger, marginBottom: 12 }}>{customersError}</p>}
+          {customers.length === 0 ? (
+            <p style={{ color: C.muted, fontSize: 13.5, padding: "2rem", textAlign: "center" }}>
+              Nenhum cliente favoritou vinhos ainda.
+            </p>
+          ) : (
+            <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 10, overflow: "hidden" }}>
+              {customers.map((c, i) => (
+                <div key={c.phone} style={{ padding: "12px 16px", borderBottom: i < customers.length - 1 ? `1px solid ${C.line}` : "none" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                    <a href={`https://wa.me/${c.phone}`} target="_blank" rel="noreferrer" style={{ fontSize: 14, fontWeight: 600, color: C.ink, textDecoration: "none" }}>
+                      {c.phone}
+                    </a>
+                    <span style={{ fontSize: 11, color: C.muted }}>{new Date(c.lastActivity).toLocaleDateString("pt-BR")}</span>
+                  </div>
+                  <p style={{ fontSize: 12.5, color: C.inkSoft }}>♥ {c.wineNames.join(", ")}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
       <div style={{ padding: "1.25rem", maxWidth: 900, margin: "0 auto" }}>
+        {/* Foto de capa */}
+        <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 10, padding: "1rem", marginBottom: "1.25rem", display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+          {supplier?.hero_image_url ? (
+            <img src={supplier.hero_image_url} alt="" style={{ width: 90, height: 60, objectFit: "cover", borderRadius: 6 }} />
+          ) : (
+            <div style={{ width: 90, height: 60, borderRadius: 6, background: C.bg, border: `1px dashed ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: C.muted, textAlign: "center" }}>
+              Sem foto
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 2 }}>Foto de capa da carta</p>
+            <p style={{ fontSize: 11.5, color: C.muted, marginBottom: 8 }}>Aparece no topo do catálogo público. Prefira fotos horizontais, bem iluminadas.</p>
+            <input type="file" accept="image/*" onChange={e => e.target.files?.[0] && uploadHeroImage(e.target.files[0])} disabled={uploadingHero} style={{ fontSize: 12, color: C.inkSoft }} />
+            {uploadingHero && <p style={{ fontSize: 11.5, color: C.muted, marginTop: 4 }}>Enviando...</p>}
+            {heroError && <p style={{ fontSize: 11.5, color: C.danger, marginTop: 4 }}>{heroError}</p>}
+          </div>
+        </div>
+
+        {/* Logo */}
+        <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 10, padding: "1rem", marginBottom: "1.25rem", display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+          {supplier?.logo_url ? (
+            <img src={supplier.logo_url} alt="" style={{ width: 60, height: 60, objectFit: "contain", borderRadius: 6, background: C.bg }} />
+          ) : (
+            <div style={{ width: 60, height: 60, borderRadius: 6, background: C.bg, border: `1px dashed ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: C.muted, textAlign: "center" }}>
+              Sem logo
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 2 }}>Logo (opcional)</p>
+            <p style={{ fontSize: 11.5, color: C.muted, marginBottom: 8 }}>Aparece no topo do catálogo, no lugar do nome em texto. Se não enviar, continua mostrando o nome normalmente.</p>
+            <input type="file" accept="image/*" onChange={e => e.target.files?.[0] && uploadLogo(e.target.files[0])} disabled={uploadingLogo} style={{ fontSize: 12, color: C.inkSoft }} />
+            {uploadingLogo && <p style={{ fontSize: 11.5, color: C.muted, marginTop: 4 }}>Enviando...</p>}
+            {logoError && <p style={{ fontSize: 11.5, color: C.danger, marginTop: 4 }}>{logoError}</p>}
+          </div>
+        </div>
+
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: "1.25rem" }}>
           {[["Rótulos", stats.total], ["Em promoção", stats.promos], ["Novidades", stats.novidades]].map(([lbl, val]) => (
@@ -302,7 +454,7 @@ export default function Admin() {
             style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 8, padding: "9px 10px", fontSize: 13, fontFamily: "inherit", color: C.ink }}
           >
             <option value="all">Todos os tipos</option>
-            {["Tinto","Branco","Rosé","Espumante","Azeite"].map(t => <option key={t} value={t}>{t}</option>)}
+            {[...new Set(wines.map(w => w.type))].filter(Boolean).sort().map(t => <option key={t} value={t}>{t}</option>)}
           </select>
           <button
             onClick={openAdd}
@@ -393,6 +545,7 @@ export default function Admin() {
           ))}
         </div>
       </div>
+      )}
 
       {/* Modal add/edit */}
       {modal && (
@@ -410,17 +563,25 @@ export default function Admin() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
               <div>
                 {label("Tipo")}
-                <select style={fieldInput} value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-                  {["Tinto","Branco","Rosé","Espumante","Azeite"].map(t => <option key={t}>{t}</option>)}
-                </select>
+                <input
+                  style={fieldInput} list="type-options" value={form.type}
+                  onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                  placeholder="Ex: Tinto, Cerveja, Whisky..."
+                />
+                <datalist id="type-options">
+                  {[...new Set(["Tinto", "Branco", "Rosé", "Espumante", "Azeite", ...wines.map(w => w.type)])].filter(Boolean).map(t => <option key={t} value={t} />)}
+                </datalist>
               </div>
               <div>
                 {label("Origem")}
-                <select style={fieldInput} value={form.origin} onChange={e => setForm(f => ({ ...f, origin: e.target.value }))}>
-                  <option value="ARGENTINA">Argentina</option>
-                  <option value="CHILE">Chile</option>
-                  <option value="PORTUGAL">Portugal</option>
-                </select>
+                <input
+                  style={fieldInput} list="origin-options" value={form.origin}
+                  onChange={e => setForm(f => ({ ...f, origin: e.target.value.toUpperCase() }))}
+                  placeholder="Ex: Argentina, França..."
+                />
+                <datalist id="origin-options">
+                  {[...new Set(["ARGENTINA", "CHILE", "PORTUGAL", "BRASIL", ...wines.map(w => w.origin)])].filter(Boolean).map(o => <option key={o} value={o} />)}
+                </datalist>
               </div>
               <div>
                 {label("Preço (R$)")}
@@ -447,18 +608,7 @@ export default function Admin() {
               {uploadingImage && <p style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Enviando...</p>}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-              <div>
-                {label("Destaque de")}
-                <input style={fieldInput} type="date" value={form.featured_from} onChange={e => setForm(f => ({ ...f, featured_from: e.target.value }))} />
-              </div>
-              <div>
-                {label("Destaque até")}
-                <input style={fieldInput} type="date" value={form.featured_until} onChange={e => setForm(f => ({ ...f, featured_until: e.target.value }))} />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: 20, marginBottom: 12 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                 <input
                   type="checkbox"
@@ -466,9 +616,47 @@ export default function Admin() {
                   onChange={e => setForm(f => ({ ...f, out_of_stock: e.target.checked }))}
                   style={{ width: 16, height: 16 }}
                 />
-                <span style={{ fontSize: 13.5, color: C.ink }}>Esgotado (esconde o botão de adicionar no catálogo)</span>
+                <span style={{ fontSize: 13.5, color: C.ink }}>Esgotado</span>
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={form.sommelier_pick}
+                  onChange={e => setForm(f => ({ ...f, sommelier_pick: e.target.checked }))}
+                  style={{ width: 16, height: 16 }}
+                />
+                <span style={{ fontSize: 13.5, color: C.ink }}>Escolha do sommelier</span>
               </label>
             </div>
+
+            <details style={{ marginBottom: "1.25rem", border: `1px solid ${C.line}`, borderRadius: 8, padding: "10px 12px" }}>
+              <summary style={{ fontSize: 12.5, color: C.inkSoft, cursor: "pointer", fontWeight: 600 }}>
+                Ficha técnica (opcional)
+              </summary>
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                  <div>{label("Vinícola")}<input style={fieldInput} value={form.winery} onChange={e => setForm(f => ({ ...f, winery: e.target.value }))} /></div>
+                  <div>{label("Região")}<input style={fieldInput} value={form.region} onChange={e => setForm(f => ({ ...f, region: e.target.value }))} /></div>
+                  <div>{label("Uva")}<input style={fieldInput} value={form.grape} onChange={e => setForm(f => ({ ...f, grape: e.target.value }))} placeholder="Ex: Malbec" /></div>
+                  <div>{label("Safra")}<input style={fieldInput} value={form.vintage} onChange={e => setForm(f => ({ ...f, vintage: e.target.value }))} placeholder="Ex: 2021" /></div>
+                  <div>{label("Teor alcoólico")}<input style={fieldInput} value={form.abv} onChange={e => setForm(f => ({ ...f, abv: e.target.value }))} placeholder="Ex: 13,5%" /></div>
+                  <div>{label("Temperatura de serviço")}<input style={fieldInput} value={form.serving_temp} onChange={e => setForm(f => ({ ...f, serving_temp: e.target.value }))} placeholder="Ex: 16-18°C" /></div>
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  {label("Harmonização")}
+                  <input style={fieldInput} value={form.food_pairing} onChange={e => setForm(f => ({ ...f, food_pairing: e.target.value }))} placeholder="Ex: Carnes vermelhas, queijos maturados" />
+                </div>
+                <div>
+                  {label("Descrição")}
+                  <textarea
+                    value={form.description}
+                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                    rows={3}
+                    style={{ ...fieldInput, resize: "vertical" }}
+                  />
+                </div>
+              </div>
+            </details>
 
             <div style={{ marginBottom: "1.25rem" }}>
               {label("Tags")}
