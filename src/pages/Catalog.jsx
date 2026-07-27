@@ -205,7 +205,7 @@ export default function Catalog() {
         </p>
 
         {categories.length > 1 && (
-          <div style={{ display: "flex", gap: SPACE.lg, overflowX: "auto", justifyContent: categories.length <= 5 ? "center" : "flex-start" }}>
+          <div style={{ display: "flex", gap: SPACE.lg, flexWrap: "wrap", justifyContent: "center", maxWidth: 480, margin: "0 auto" }}>
             {categories.map(cat => (
               <a
                 key={cat}
