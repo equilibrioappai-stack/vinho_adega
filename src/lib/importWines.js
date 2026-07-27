@@ -41,7 +41,16 @@ function text(raw, headerMap, field) {
 // não faz sentido o catálogo público (acessado via QR code no celular) baixar isso.
 export async function parseWinesWorkbook(arrayBuffer) {
   const XLSX = await import("xlsx");
-  const workbook = XLSX.read(arrayBuffer, { type: "array" });
+
+  // .xlsx é um zip (assinatura "PK"); qualquer outra coisa tratamos como CSV
+  // texto e decodificamos como UTF-8 explicitamente — sem isso, um CSV sem
+  // BOM pode ser lido com a codificação errada e estropiar acentos.
+  const bytes = new Uint8Array(arrayBuffer);
+  const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b;
+  const workbook = isZip
+    ? XLSX.read(arrayBuffer, { type: "array" })
+    : XLSX.read(new TextDecoder("utf-8").decode(arrayBuffer), { type: "string" });
+
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
