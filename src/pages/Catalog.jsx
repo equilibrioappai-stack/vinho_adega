@@ -6,7 +6,7 @@ import Cart from "./Cart";
 
 const DARK_INK = "#17140F";
 
-const TYPE_ICON = { Tinto: "🍷", Branco: "🥂", Rosé: "🌸", Espumante: "✨", Azeite: "🫒" };
+const TYPE_ICON = { Tinto: "🍷", Branco: "🥂", Rosé: "🌸", Espumante: "✨", Azeite: "🫒", Acessório: "🎁", Queijo: "🧀", Geleia: "🍯" };
 const CATEGORY_ORDER = ["Espumante", "Branco", "Rosé", "Tinto", "Azeite"];
 
 function slugify(text) {
