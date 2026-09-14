@@ -191,6 +191,23 @@ export default function Admin() {
     setSupplier(updated);
   };
 
+  const [savingLayout, setSavingLayout] = useState(false);
+  const [layoutError, setLayoutError] = useState("");
+  const setLayoutStyle = async (layout_style) => {
+    if (layout_style === supplier.layout_style) return;
+    setSavingLayout(true);
+    setLayoutError("");
+    const { data: updated, error: updateErr } = await supabase
+      .from("suppliers")
+      .update({ layout_style })
+      .eq("id", supplier.id)
+      .select()
+      .single();
+    setSavingLayout(false);
+    if (updateErr) { setLayoutError("Não foi possível salvar: " + updateErr.message); return; }
+    setSupplier(updated);
+  };
+
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoError, setLogoError] = useState("");
   const uploadLogo = async (file) => {
@@ -464,6 +481,39 @@ export default function Admin() {
             {uploadingLogo && <p style={{ fontSize: 11.5, color: C.muted, marginTop: 4 }}>Enviando...</p>}
             {logoError && <p style={{ fontSize: 11.5, color: C.danger, marginTop: 4 }}>{logoError}</p>}
           </div>
+        </div>
+
+        {/* Estilo do catálogo */}
+        <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 10, padding: "1rem", marginBottom: "1.25rem" }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 2 }}>Estilo do catálogo</p>
+          <p style={{ fontSize: 11.5, color: C.muted, marginBottom: 10 }}>Como seus clientes veem a carta no celular.</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
+            {[
+              ["editorial", "Carta editorial", "Sofisticado, com fotos e ficha técnica — bom pra vinhos."],
+              ["vitrine", "Vitrine com fotos", "Grid de cards, foto em destaque — bom pra impacto visual."],
+              ["compacta", "Lista compacta", "Denso, sem fotos — bom pra catálogos grandes (100+ itens)."],
+            ].map(([key, title, desc]) => {
+              const active = (supplier?.layout_style || "editorial") === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setLayoutStyle(key)}
+                  disabled={savingLayout}
+                  style={{
+                    textAlign: "left", background: active ? C.bg : "transparent",
+                    border: `1px solid ${active ? C.ink : C.line}`, borderRadius: 8, padding: "10px 12px",
+                    cursor: savingLayout ? "not-allowed" : "pointer", fontFamily: "inherit",
+                  }}
+                >
+                  <p style={{ fontSize: 12.5, fontWeight: 700, color: active ? C.ink : C.inkSoft, marginBottom: 3 }}>
+                    {active ? "✓ " : ""}{title}
+                  </p>
+                  <p style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>{desc}</p>
+                </button>
+              );
+            })}
+          </div>
+          {layoutError && <p style={{ fontSize: 11.5, color: C.danger, marginTop: 8 }}>{layoutError}</p>}
         </div>
 
         {/* Stats */}
