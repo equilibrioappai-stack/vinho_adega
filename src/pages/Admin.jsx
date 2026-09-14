@@ -41,6 +41,12 @@ export default function Admin() {
   const [customers, setCustomers] = useState([]);
   const [customersError, setCustomersError] = useState("");
 
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ password: "", confirm: "" });
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
@@ -100,6 +106,30 @@ export default function Admin() {
   };
 
   const logout = () => supabase.auth.signOut();
+
+  const openPasswordModal = () => {
+    setPasswordForm({ password: "", confirm: "" });
+    setPasswordError("");
+    setPasswordSuccess(false);
+    setShowPasswordModal(true);
+  };
+
+  const changePassword = async () => {
+    setPasswordError("");
+    if (passwordForm.password.length < 6) {
+      setPasswordError("A senha precisa ter pelo menos 6 caracteres.");
+      return;
+    }
+    if (passwordForm.password !== passwordForm.confirm) {
+      setPasswordError("As senhas não coincidem.");
+      return;
+    }
+    setSavingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: passwordForm.password });
+    setSavingPassword(false);
+    if (error) { setPasswordError("Não foi possível alterar a senha: " + error.message); return; }
+    setPasswordSuccess(true);
+  };
 
   const filtered = wines.filter(w => {
     const q = search.toLowerCase();
@@ -348,10 +378,16 @@ export default function Admin() {
           </p>
           <p style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>Painel do fornecedor</p>
         </div>
-        <button
-          onClick={logout}
-          style={{ background: "none", border: `1px solid ${C.line}`, color: C.inkSoft, borderRadius: 7, padding: "6px 13px", fontSize: 12.5, fontFamily: "inherit", cursor: "pointer" }}
-        >Sair</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={openPasswordModal}
+            style={{ background: "none", border: `1px solid ${C.line}`, color: C.inkSoft, borderRadius: 7, padding: "6px 13px", fontSize: 12.5, fontFamily: "inherit", cursor: "pointer" }}
+          >Alterar senha</button>
+          <button
+            onClick={logout}
+            style={{ background: "none", border: `1px solid ${C.line}`, color: C.inkSoft, borderRadius: 7, padding: "6px 13px", fontSize: 12.5, fontFamily: "inherit", cursor: "pointer" }}
+          >Sair</button>
+        </div>
       </div>
 
       {/* Abas */}
@@ -757,6 +793,60 @@ export default function Admin() {
                 style={{ flex: 2, background: importPreview.wines.length === 0 ? C.line : C.ink, border: "none", color: C.surface, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", fontWeight: 600, cursor: importPreview.wines.length === 0 ? "not-allowed" : "pointer" }}
               >{importing ? "Importando..." : `Importar ${importPreview.wines.length} vinhos`}</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alterar senha */}
+      {showPasswordModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(34,31,26,0.45)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div style={{ background: C.surface, borderRadius: "14px 14px 0 0", padding: "1.5rem 1.25rem 2rem", width: "100%", maxWidth: 420 }}>
+            <p style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: "1.25rem" }}>Alterar senha</p>
+
+            {passwordSuccess ? (
+              <>
+                <p style={{ fontSize: 13.5, color: C.success, marginBottom: "1.5rem" }}>Senha alterada com sucesso.</p>
+                <button
+                  onClick={() => setShowPasswordModal(false)}
+                  style={{ width: "100%", background: C.ink, border: "none", color: C.surface, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}
+                >Fechar</button>
+              </>
+            ) : (
+              <>
+                <div style={{ marginBottom: 12 }}>
+                  {label("Nova senha")}
+                  <input
+                    type="password"
+                    style={fieldInput}
+                    value={passwordForm.password}
+                    onChange={e => setPasswordForm(f => ({ ...f, password: e.target.value }))}
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  {label("Confirmar nova senha")}
+                  <input
+                    type="password"
+                    style={fieldInput}
+                    value={passwordForm.confirm}
+                    onChange={e => setPasswordForm(f => ({ ...f, confirm: e.target.value }))}
+                    onKeyDown={e => e.key === "Enter" && changePassword()}
+                  />
+                </div>
+                {passwordError && <p style={{ fontSize: 12, color: C.danger, marginBottom: 10 }}>{passwordError}</p>}
+                <div style={{ display: "flex", gap: 8, paddingTop: "0.5rem" }}>
+                  <button
+                    onClick={() => setShowPasswordModal(false)}
+                    style={{ flex: 1, background: "none", border: `1px solid ${C.line}`, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", cursor: "pointer", color: C.inkSoft }}
+                  >Cancelar</button>
+                  <button
+                    onClick={changePassword}
+                    disabled={savingPassword}
+                    style={{ flex: 2, background: C.ink, border: "none", color: C.surface, borderRadius: 8, padding: "11px", fontSize: 14, fontFamily: "inherit", fontWeight: 600, cursor: savingPassword ? "not-allowed" : "pointer" }}
+                  >{savingPassword ? "Salvando..." : "Salvar nova senha"}</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
