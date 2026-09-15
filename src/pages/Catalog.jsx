@@ -89,6 +89,106 @@ export default function Catalog() {
     );
   }
 
+  const shared = {
+    supplier, accent, wines, cart, addToCart, decreaseFromCart, favorites,
+    search, setSearch, originFilter, setOriginFilter, viewMode, setViewMode, searchRef,
+    origins, categories, isSearching, flatResults, grouped,
+  };
+
+  const layout = supplier?.layout_style || "editorial";
+  if (layout === "vitrine") return <VitrineLayout {...shared} />;
+  if (layout === "compacta") return <CompactaLayout {...shared} />;
+  return <EditorialLayout {...shared} />;
+}
+
+function stopEvt(fn) {
+  return (e) => { e.preventDefault(); e.stopPropagation(); fn(); };
+}
+
+function BottomNav({ accent, viewMode, setViewMode, categories, searchRef }) {
+  return (
+    <div style={{
+      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 45,
+      background: C.surface, borderTop: `1px solid ${C.line}`,
+      display: "flex", justifyContent: "space-around", padding: "8px 0 max(8px, env(safe-area-inset-bottom))",
+    }}>
+      {[
+        { label: "Início", icon: "⌂", onClick: () => window.scrollTo({ top: 0, behavior: "smooth" }) },
+        { label: "Categorias", icon: "☰", onClick: () => document.getElementById(`cat-${slugify(categories[0] || "")}`)?.scrollIntoView({ behavior: "smooth" }) },
+        { label: "Buscar", icon: "⌕", onClick: () => searchRef.current?.focus() },
+        { label: "Favoritos", icon: viewMode === "favorites" ? "♥" : "♡", onClick: () => setViewMode(v => v === "favorites" ? "all" : "favorites") },
+      ].map(item => (
+        <button
+          key={item.label}
+          onClick={item.onClick}
+          style={{
+            background: "none", border: "none", cursor: "pointer", fontFamily: "inherit",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+            color: item.label === "Favoritos" && viewMode === "favorites" ? accent : C.inkSoft,
+          }}
+        >
+          <span style={{ fontSize: 19 }}>{item.icon}</span>
+          <span style={{ fontSize: 9.5 }}>{item.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SearchBar({ supplier, search, setSearch, searchRef, viewMode, setViewMode, origins, originFilter, setOriginFilter, accent }) {
+  return (
+    <div style={{ position: "sticky", top: 0, zIndex: 30, background: C.bg, borderBottom: `1px solid ${C.line}` }}>
+      <div style={{ maxWidth: 640, margin: "0 auto", padding: `${SPACE.md}px` }}>
+        <input
+          ref={searchRef}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar por nome, vinícola, uva, país..."
+          style={{
+            width: "100%", background: C.surface, border: `1px solid ${C.line}`, color: C.ink,
+            borderRadius: 8, padding: "14px 16px", fontSize: 16, fontFamily: "inherit", outline: "none",
+          }}
+        />
+
+        {viewMode === "favorites" && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: SPACE.sm }}>
+            <span style={{ fontSize: 12, color: accent, fontWeight: 600 }}>♥ Mostrando favoritos</span>
+            <button onClick={() => setViewMode("all")} style={{ background: "none", border: "none", color: C.muted, fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>Ver todos</button>
+          </div>
+        )}
+
+        {origins.length > 1 && (
+          <div style={{ display: "flex", gap: SPACE.sm, overflowX: "auto", marginTop: SPACE.sm }}>
+            {origins.map(o => (
+              <button
+                key={o}
+                onClick={() => setOriginFilter(originFilter === o ? "all" : o)}
+                style={{
+                  flexShrink: 0, background: "transparent",
+                  border: `1px solid ${originFilter === o ? accent : C.line}`,
+                  color: originFilter === o ? accent : C.muted,
+                  borderRadius: 20, padding: "4px 12px", fontSize: 11.5, fontFamily: "inherit",
+                  cursor: "pointer", whiteSpace: "nowrap",
+                }}
+              >{o.charAt(0) + o.slice(1).toLowerCase()}</button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const miniStepBtn = {
+  background: C.surface, border: `1px solid ${C.line}`, color: C.ink,
+  borderRadius: 5, width: 22, height: 22, fontSize: 12, cursor: "pointer",
+  display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
+};
+
+/* ---------------------------------------------------------------------- */
+/* Layout 1 — Carta editorial (padrão): hero escuro, linhas com foto e ficha */
+/* ---------------------------------------------------------------------- */
+function EditorialLayout({ supplier, accent, wines, cart, addToCart, decreaseFromCart, search, setSearch, originFilter, setOriginFilter, viewMode, setViewMode, searchRef, origins, categories, isSearching, flatResults, grouped }) {
   const thumb = (w) => (
     w.image_url
       ? <img src={w.image_url} alt="" loading="lazy" style={{ width: 68, height: 88, objectFit: "cover", borderRadius: 5, flexShrink: 0, background: C.surface, boxShadow: "0 2px 6px rgba(30,27,23,0.12)" }} />
@@ -107,7 +207,6 @@ export default function Catalog() {
     const qtyInSelection = cart[w.id] || 0;
     const meta = [w.origin && (w.origin.charAt(0) + w.origin.slice(1).toLowerCase()), w.region, w.winery].filter(Boolean).join(" · ");
     const secondary = [w.grape, w.vintage].filter(Boolean).join(" · ");
-    const stop = (fn) => (e) => { e.preventDefault(); e.stopPropagation(); fn(); };
     return (
       <Link
         key={w.id}
@@ -156,7 +255,7 @@ export default function Catalog() {
           {!w.out_of_stock && (
             qtyInSelection === 0 ? (
               <button
-                onClick={stop(() => addToCart(w.id))}
+                onClick={stopEvt(() => addToCart(w.id))}
                 style={{
                   background: "transparent", border: `1px solid ${accent}`, color: accent,
                   borderRadius: 20, padding: "4px 12px", fontSize: 11.5, fontWeight: 600,
@@ -165,9 +264,9 @@ export default function Catalog() {
               >Adicionar</button>
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <button onClick={stop(() => decreaseFromCart(w.id))} style={miniStepBtn}>–</button>
+                <button onClick={stopEvt(() => decreaseFromCart(w.id))} style={miniStepBtn}>–</button>
                 <span style={{ fontSize: 12.5, minWidth: 12, textAlign: "center", fontWeight: 700 }}>{qtyInSelection}</span>
-                <button onClick={stop(() => addToCart(w.id))} style={miniStepBtn}>+</button>
+                <button onClick={stopEvt(() => addToCart(w.id))} style={miniStepBtn}>+</button>
               </div>
             )
           )}
@@ -178,7 +277,6 @@ export default function Catalog() {
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.ink, fontFamily: FONT }}>
-      {/* Hero editorial */}
       <div style={{
         padding: `${SPACE.xxxl}px ${SPACE.md}px ${SPACE.xxl}px`, textAlign: "center",
         ...(supplier?.hero_image_url
@@ -225,61 +323,17 @@ export default function Catalog() {
         )}
       </div>
 
-      {/* Busca — o elemento mais importante da tela */}
-      <div style={{ position: "sticky", top: 0, zIndex: 30, background: C.bg, borderBottom: `1px solid ${C.line}` }}>
-        <div style={{ maxWidth: 640, margin: "0 auto", padding: `${SPACE.md}px` }}>
-          <input
-            ref={searchRef}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por nome, vinícola, uva, país..."
-            style={{
-              width: "100%", background: C.surface, border: `1px solid ${C.line}`, color: C.ink,
-              borderRadius: 8, padding: "14px 16px", fontSize: 16, fontFamily: "inherit", outline: "none",
-            }}
-          />
+      <SearchBar {...{ supplier, search, setSearch, searchRef, viewMode, setViewMode, origins, originFilter, setOriginFilter, accent }} />
 
-          {viewMode === "favorites" && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: SPACE.sm }}>
-              <span style={{ fontSize: 12, color: accent, fontWeight: 600 }}>♥ Mostrando favoritos</span>
-              <button onClick={() => setViewMode("all")} style={{ background: "none", border: "none", color: C.muted, fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>Ver todos</button>
-            </div>
-          )}
-
-          {origins.length > 1 && (
-            <div style={{ display: "flex", gap: SPACE.sm, overflowX: "auto", marginTop: SPACE.sm }}>
-              {origins.map(o => (
-                <button
-                  key={o}
-                  onClick={() => setOriginFilter(originFilter === o ? "all" : o)}
-                  style={{
-                    flexShrink: 0, background: "transparent",
-                    border: `1px solid ${originFilter === o ? accent : C.line}`,
-                    color: originFilter === o ? accent : C.muted,
-                    borderRadius: 20, padding: "4px 12px", fontSize: 11.5, fontFamily: "inherit",
-                    cursor: "pointer", whiteSpace: "nowrap",
-                  }}
-                >{o.charAt(0) + o.slice(1).toLowerCase()}</button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Carta */}
       <div style={{ maxWidth: 640, margin: "0 auto", padding: `${SPACE.sm}px ${SPACE.md}px ${SPACE.xxxl}px` }}>
         {isSearching ? (
           flatResults.length === 0 ? (
-            <p style={{ color: C.muted, padding: `${SPACE.xxl}px 0`, textAlign: "center", fontSize: 14 }}>
-              Nenhum rótulo encontrado.
-            </p>
+            <p style={{ color: C.muted, padding: `${SPACE.xxl}px 0`, textAlign: "center", fontSize: 14 }}>Nenhum rótulo encontrado.</p>
           ) : (
             flatResults.map(wineRow)
           )
         ) : grouped.length === 0 ? (
-          <p style={{ color: C.muted, padding: `${SPACE.xxl}px 0`, textAlign: "center", fontSize: 14 }}>
-            Nenhum rótulo encontrado.
-          </p>
+          <p style={{ color: C.muted, padding: `${SPACE.xxl}px 0`, textAlign: "center", fontSize: 14 }}>Nenhum rótulo encontrado.</p>
         ) : (
           grouped.map(({ type, items }) => (
             <section key={type} id={`cat-${slugify(type)}`} style={{ paddingTop: SPACE.xxl, scrollMarginTop: 180 }}>
@@ -295,47 +349,252 @@ export default function Catalog() {
         )}
       </div>
 
-      {/* Rodapé */}
       <div style={{ borderTop: `1px solid ${C.line}`, padding: `${SPACE.xl}px ${SPACE.md}px ${SPACE.xxxl}px`, textAlign: "center" }}>
         {supplier?.whatsapp_number && (
           <p style={{ fontSize: 13, color: C.inkSoft }}>Dúvidas ou pedidos: <span style={{ color: accent, fontWeight: 600 }}>{supplier.whatsapp_number}</span></p>
         )}
       </div>
 
-      {/* Navegação fixa */}
-      <div style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 45,
-        background: C.surface, borderTop: `1px solid ${C.line}`,
-        display: "flex", justifyContent: "space-around", padding: "8px 0 max(8px, env(safe-area-inset-bottom))",
-      }}>
-        {[
-          { label: "Início", icon: "⌂", onClick: () => window.scrollTo({ top: 0, behavior: "smooth" }) },
-          { label: "Categorias", icon: "☰", onClick: () => document.getElementById(`cat-${slugify(categories[0] || "")}`)?.scrollIntoView({ behavior: "smooth" }) },
-          { label: "Buscar", icon: "⌕", onClick: () => searchRef.current?.focus() },
-          { label: "Favoritos", icon: viewMode === "favorites" ? "♥" : "♡", onClick: () => setViewMode(v => v === "favorites" ? "all" : "favorites") },
-        ].map(item => (
-          <button
-            key={item.label}
-            onClick={item.onClick}
-            style={{
-              background: "none", border: "none", cursor: "pointer", fontFamily: "inherit",
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-              color: item.label === "Favoritos" && viewMode === "favorites" ? accent : C.inkSoft,
-            }}
-          >
-            <span style={{ fontSize: 19 }}>{item.icon}</span>
-            <span style={{ fontSize: 9.5 }}>{item.label}</span>
-          </button>
-        ))}
-      </div>
-
+      <BottomNav accent={accent} viewMode={viewMode} setViewMode={setViewMode} categories={categories} searchRef={searchRef} />
       <Cart />
     </div>
   );
 }
 
-const miniStepBtn = {
-  background: C.surface, border: `1px solid ${C.line}`, color: C.ink,
-  borderRadius: 5, width: 22, height: 22, fontSize: 12, cursor: "pointer",
-  display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
-};
+/* ---------------------------------------------------------------------- */
+/* Layout 2 — Vitrine: grid de cards com foto em destaque                 */
+/* ---------------------------------------------------------------------- */
+function VitrineLayout({ supplier, accent, wines, cart, addToCart, decreaseFromCart, search, setSearch, originFilter, setOriginFilter, viewMode, setViewMode, searchRef, origins, categories, isSearching, flatResults, grouped }) {
+  const card = (w) => {
+    const qtyInSelection = cart[w.id] || 0;
+    return (
+      <Link
+        key={w.id}
+        to={`vinho/${w.id}`}
+        style={{ textDecoration: "none", color: "inherit", opacity: w.out_of_stock ? 0.5 : 1 }}
+      >
+        <div style={{ position: "relative", background: C.surface, border: `1px solid ${C.line}`, borderRadius: 10, overflow: "hidden" }}>
+          <div style={{ position: "relative", aspectRatio: "1 / 1", background: `linear-gradient(160deg, ${C.surface}, ${C.accentSoft})` }}>
+            {w.image_url ? (
+              <img src={w.image_url} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, color: accent }}>
+                {initials(w.name)}
+              </div>
+            )}
+            {w.out_of_stock && (
+              <span style={{ position: "absolute", top: 8, left: 8, background: "rgba(30,27,23,0.85)", color: "#fff", fontSize: 9.5, textTransform: "uppercase", letterSpacing: 0.4, padding: "3px 7px", borderRadius: 4 }}>Esgotado</span>
+            )}
+            {!w.out_of_stock && w.sommelier_pick && (
+              <span style={{ position: "absolute", top: 8, left: 8, background: C.gold, color: "#fff", fontSize: 9.5, textTransform: "uppercase", letterSpacing: 0.4, padding: "3px 7px", borderRadius: 4, fontWeight: 700 }}>★ Sommelier</span>
+            )}
+            {w.promo && (
+              <span style={{ position: "absolute", top: 8, right: 8, background: accent, color: "#fff", fontSize: 9.5, textTransform: "uppercase", letterSpacing: 0.4, padding: "3px 7px", borderRadius: 4, fontWeight: 700 }}>Promo</span>
+            )}
+          </div>
+
+          <div style={{ padding: "10px 12px 12px" }}>
+            <p style={{ fontSize: 13.5, fontWeight: 700, color: C.ink, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", minHeight: 34 }}>
+              {w.name}
+            </p>
+            <p style={{ fontSize: 11, color: C.inkSoft, marginTop: 2 }}>
+              {[w.origin && (w.origin.charAt(0) + w.origin.slice(1).toLowerCase()), w.region].filter(Boolean).join(" · ")}
+            </p>
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+              <div>
+                <span style={{ fontSize: 15, fontWeight: 800, color: w.promo ? accent : C.ink }}>
+                  R$ {(w.promo || w.price).toLocaleString("pt-BR")}
+                </span>
+                {w.promo && (
+                  <span style={{ display: "block", fontSize: 10.5, color: C.muted, textDecoration: "line-through" }}>
+                    R$ {w.price.toLocaleString("pt-BR")}
+                  </span>
+                )}
+              </div>
+
+              {!w.out_of_stock && (
+                qtyInSelection === 0 ? (
+                  <button
+                    onClick={stopEvt(() => addToCart(w.id))}
+                    style={{ background: accent, border: "none", color: "#fff", borderRadius: "50%", width: 30, height: 30, fontSize: 16, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
+                  >+</button>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <button onClick={stopEvt(() => decreaseFromCart(w.id))} style={miniStepBtn}>–</button>
+                    <span style={{ fontSize: 12, minWidth: 10, textAlign: "center", fontWeight: 700 }}>{qtyInSelection}</span>
+                    <button onClick={stopEvt(() => addToCart(w.id))} style={miniStepBtn}>+</button>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      </Link>
+    );
+  };
+
+  const grid = (items) => (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: SPACE.sm }}>
+      {items.map(card)}
+    </div>
+  );
+
+  return (
+    <div style={{ background: C.bg, minHeight: "100vh", color: C.ink, fontFamily: FONT }}>
+      <div style={{
+        padding: `${SPACE.xxl}px ${SPACE.md}px ${SPACE.xl}px`, textAlign: "center",
+        ...(supplier?.hero_image_url
+          ? {
+              backgroundImage: `linear-gradient(180deg, rgba(23,20,15,0.25), rgba(23,20,15,0.75)), url(${supplier.hero_image_url})`,
+              backgroundSize: "cover", backgroundPosition: "center",
+            }
+          : { background: `linear-gradient(180deg, ${DARK_INK} 0%, #241F17 100%)` }),
+      }}>
+        {supplier?.logo_url ? (
+          <img src={supplier.logo_url} alt={supplier.business_name} style={{ height: 44, maxWidth: 180, objectFit: "contain", marginBottom: SPACE.sm }} />
+        ) : (
+          <p style={{ fontSize: 18, fontWeight: 800, color: "#F7F4ED", marginBottom: 2 }}>{supplier?.business_name}</p>
+        )}
+        <p style={{ fontSize: 13, color: "#D8D0C0" }}>{wines.length} produtos disponíveis</p>
+      </div>
+
+      <SearchBar {...{ supplier, search, setSearch, searchRef, viewMode, setViewMode, origins, originFilter, setOriginFilter, accent }} />
+
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: `${SPACE.md}px ${SPACE.md}px ${SPACE.xxxl}px` }}>
+        {isSearching ? (
+          flatResults.length === 0 ? (
+            <p style={{ color: C.muted, padding: `${SPACE.xxl}px 0`, textAlign: "center", fontSize: 14 }}>Nenhum produto encontrado.</p>
+          ) : grid(flatResults)
+        ) : grouped.length === 0 ? (
+          <p style={{ color: C.muted, padding: `${SPACE.xxl}px 0`, textAlign: "center", fontSize: 14 }}>Nenhum produto encontrado.</p>
+        ) : (
+          grouped.map(({ type, items }) => (
+            <section key={type} id={`cat-${slugify(type)}`} style={{ marginBottom: SPACE.xl, scrollMarginTop: 180 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: SPACE.sm, marginBottom: SPACE.sm }}>
+                <span style={{ fontSize: 16 }}>{TYPE_ICON[type] || "🍾"}</span>
+                <h2 style={{ fontFamily: FONT, fontSize: 16, fontWeight: 800, color: C.ink }}>{type}s</h2>
+                <span style={{ fontSize: 11.5, color: C.muted }}>({items.length})</span>
+              </div>
+              {grid(items)}
+            </section>
+          ))
+        )}
+      </div>
+
+      <div style={{ borderTop: `1px solid ${C.line}`, padding: `${SPACE.xl}px ${SPACE.md}px ${SPACE.xxxl}px`, textAlign: "center" }}>
+        {supplier?.whatsapp_number && (
+          <p style={{ fontSize: 13, color: C.inkSoft }}>Dúvidas ou pedidos: <span style={{ color: accent, fontWeight: 600 }}>{supplier.whatsapp_number}</span></p>
+        )}
+      </div>
+
+      <BottomNav accent={accent} viewMode={viewMode} setViewMode={setViewMode} categories={categories} searchRef={searchRef} />
+      <Cart />
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/* Layout 3 — Compacta: lista densa sem fotos, pra catálogos grandes      */
+/* ---------------------------------------------------------------------- */
+function CompactaLayout({ supplier, accent, wines, cart, addToCart, decreaseFromCart, search, setSearch, originFilter, setOriginFilter, viewMode, setViewMode, searchRef, origins, categories, isSearching, flatResults, grouped }) {
+  const line = (w) => {
+    const qtyInSelection = cart[w.id] || 0;
+    return (
+      <Link
+        key={w.id}
+        to={`vinho/${w.id}`}
+        style={{
+          display: "flex", gap: SPACE.sm, alignItems: "center", textDecoration: "none", color: "inherit",
+          padding: "9px 0", borderBottom: `1px solid ${C.line}`, opacity: w.out_of_stock ? 0.5 : 1,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+            <p style={{ fontSize: 13.5, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</p>
+            {w.out_of_stock && <span style={{ fontSize: 9, color: C.muted, textTransform: "uppercase", flexShrink: 0 }}>Esgotado</span>}
+            {!w.out_of_stock && w.sommelier_pick && <span style={{ fontSize: 9, color: C.gold, fontWeight: 700, flexShrink: 0 }}>★</span>}
+          </div>
+          <p style={{ fontSize: 10.5, color: C.muted }}>
+            {[w.origin && (w.origin.charAt(0) + w.origin.slice(1).toLowerCase()), w.grape, w.vintage].filter(Boolean).join(" · ")}
+          </p>
+        </div>
+
+        <div style={{ textAlign: "right", flexShrink: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <div>
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: w.promo ? accent : C.ink }}>
+              R$ {(w.promo || w.price).toLocaleString("pt-BR")}
+            </span>
+            {w.promo && (
+              <span style={{ display: "block", fontSize: 9.5, color: C.muted, textDecoration: "line-through" }}>
+                R$ {w.price.toLocaleString("pt-BR")}
+              </span>
+            )}
+          </div>
+
+          {!w.out_of_stock && (
+            qtyInSelection === 0 ? (
+              <button
+                onClick={stopEvt(() => addToCart(w.id))}
+                style={{ background: "none", border: `1px solid ${accent}`, color: accent, borderRadius: "50%", width: 24, height: 24, fontSize: 14, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
+              >+</button>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button onClick={stopEvt(() => decreaseFromCart(w.id))} style={miniStepBtn}>–</button>
+                <span style={{ fontSize: 11.5, minWidth: 10, textAlign: "center", fontWeight: 700 }}>{qtyInSelection}</span>
+                <button onClick={stopEvt(() => addToCart(w.id))} style={miniStepBtn}>+</button>
+              </div>
+            )
+          )}
+        </div>
+      </Link>
+    );
+  };
+
+  return (
+    <div style={{ background: C.bg, minHeight: "100vh", color: C.ink, fontFamily: FONT }}>
+      <div style={{ padding: `${SPACE.lg}px ${SPACE.md}px`, textAlign: "center", background: C.surface, borderBottom: `1px solid ${C.line}` }}>
+        {supplier?.logo_url ? (
+          <img src={supplier.logo_url} alt={supplier.business_name} style={{ height: 36, maxWidth: 160, objectFit: "contain", marginBottom: 4 }} />
+        ) : (
+          <p style={{ fontSize: 16, fontWeight: 800, color: C.ink }}>{supplier?.business_name}</p>
+        )}
+        <p style={{ fontSize: 11.5, color: C.muted }}>{wines.length} itens na carta</p>
+      </div>
+
+      <SearchBar {...{ supplier, search, setSearch, searchRef, viewMode, setViewMode, origins, originFilter, setOriginFilter, accent }} />
+
+      <div style={{ maxWidth: 640, margin: "0 auto", padding: `0 ${SPACE.md}px ${SPACE.xxxl}px` }}>
+        {isSearching ? (
+          flatResults.length === 0 ? (
+            <p style={{ color: C.muted, padding: `${SPACE.xxl}px 0`, textAlign: "center", fontSize: 14 }}>Nenhum item encontrado.</p>
+          ) : (
+            flatResults.map(line)
+          )
+        ) : grouped.length === 0 ? (
+          <p style={{ color: C.muted, padding: `${SPACE.xxl}px 0`, textAlign: "center", fontSize: 14 }}>Nenhum item encontrado.</p>
+        ) : (
+          grouped.map(({ type, items }) => (
+            <section key={type} id={`cat-${slugify(type)}`} style={{ paddingTop: SPACE.lg, scrollMarginTop: 160 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                <h2 style={{ fontSize: 12.5, fontWeight: 800, color: C.inkSoft, textTransform: "uppercase", letterSpacing: 0.5 }}>{type}s</h2>
+                <span style={{ flex: 1, height: 1, background: C.line }} />
+                <span style={{ fontSize: 10.5, color: C.muted }}>{items.length}</span>
+              </div>
+              {items.map(line)}
+            </section>
+          ))
+        )}
+      </div>
+
+      <div style={{ borderTop: `1px solid ${C.line}`, padding: `${SPACE.lg}px ${SPACE.md}px ${SPACE.xxxl}px`, textAlign: "center" }}>
+        {supplier?.whatsapp_number && (
+          <p style={{ fontSize: 12.5, color: C.inkSoft }}>Dúvidas ou pedidos: <span style={{ color: accent, fontWeight: 600 }}>{supplier.whatsapp_number}</span></p>
+        )}
+      </div>
+
+      <BottomNav accent={accent} viewMode={viewMode} setViewMode={setViewMode} categories={categories} searchRef={searchRef} />
+      <Cart />
+    </div>
+  );
+}

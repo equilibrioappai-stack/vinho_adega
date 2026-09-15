@@ -43,6 +43,7 @@ export default function SuperAdmin() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [qrSupplier, setQrSupplier] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -171,7 +172,13 @@ export default function SuperAdmin() {
               <div key={s.id} style={{ padding: "12px 16px", borderBottom: i < suppliers.length - 1 ? `1px solid ${C.line}` : "none" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
                   <p style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{s.business_name}</p>
-                  <a href={`/catalogo/${s.slug}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: C.accent }}>/catalogo/{s.slug}</a>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <a href={`/catalogo/${s.slug}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: C.accent }}>/catalogo/{s.slug}</a>
+                    <button
+                      onClick={() => setQrSupplier(s)}
+                      style={{ background: "none", border: `1px solid ${C.line}`, color: C.inkSoft, borderRadius: 6, padding: "3px 9px", fontSize: 11.5, fontFamily: "inherit", cursor: "pointer" }}
+                    >QR Code</button>
+                  </div>
                 </div>
                 <p style={{ fontSize: 12, color: C.inkSoft, marginTop: 4 }}>
                   {s.contact_email || "sem e-mail de contato"} · WhatsApp {s.whatsapp_number}
@@ -189,6 +196,38 @@ export default function SuperAdmin() {
           })}
         </div>
       </div>
+
+      {qrSupplier && (
+        <div
+          onClick={() => setQrSupplier(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(34,31,26,0.45)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: C.surface, borderRadius: 12, padding: "1.5rem", width: "100%", maxWidth: 340, textAlign: "center" }}>
+            <p style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 4 }}>{qrSupplier.business_name}</p>
+            <p style={{ fontSize: 12, color: C.inkSoft, marginBottom: "1rem" }}>
+              {window.location.origin}/catalogo/{qrSupplier.slug}
+            </p>
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`${window.location.origin}/catalogo/${qrSupplier.slug}`)}`}
+              alt={`QR Code — ${qrSupplier.business_name}`}
+              width={260}
+              height={260}
+              style={{ display: "block", margin: "0 auto 1.25rem", borderRadius: 8, border: `1px solid ${C.line}` }}
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <a
+                href={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(`${window.location.origin}/catalogo/${qrSupplier.slug}`)}`}
+                download={`qrcode-${qrSupplier.slug}.png`}
+                style={{ flex: 1, background: C.ink, border: "none", color: C.surface, borderRadius: 8, padding: "10px", fontSize: 13.5, fontFamily: "inherit", fontWeight: 600, textDecoration: "none" }}
+              >Baixar PNG</a>
+              <button
+                onClick={() => setQrSupplier(null)}
+                style={{ flex: 1, background: "none", border: `1px solid ${C.line}`, color: C.inkSoft, borderRadius: 8, padding: "10px", fontSize: 13.5, fontFamily: "inherit", cursor: "pointer" }}
+              >Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
